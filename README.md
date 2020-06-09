@@ -45,7 +45,7 @@ To reproduce the experiments in the paper, see below
 
 1. Search on NAS-Bench-101
     ```bash
-    python3 -u nasbench_optimisation.py --dataset nasbench101 --strategy gbo -k wloa --pool_size 200 --batch_size 5 --max_iters 30 --n_repeat 20 --n_init 10
+    python3 -u nasbench_optimisation.py --dataset nasbench101 --pool_size 200 --batch_size 5 --max_iters 30 --n_repeat 20 --n_init 10
     ```
 
     This by default runs the NAS-Bench-101 on the stochastic validation error (i.e. randomness in the objective function). For the 
@@ -53,7 +53,7 @@ To reproduce the experiments in the paper, see below
 
 2. Search on NAS-Bench-201 (by default on the CIFAR-10 valid dataset.)
     ```bash
-    python3 -u nasbench_optimisation.py  --dataset nasbench201 --strategy gbo -k wl --pool_size 200 --mutate_size 200 --batch_size 5 --n_init 10 --max_iters 30
+    python3 -u nasbench_optimisation.py  --dataset nasbench201 --pool_size 200 --mutate_size 200 --batch_size 5 --n_init 10 --max_iters 30
     ```
     Again, append ```--fixed_query_seed 3``` for deterministic objective function. Append ```--task cifar100```
     for CIFAR-100 dataset, and similarly ```--task ImageNet16-120``` for ImageNet16 dataset.
@@ -61,10 +61,10 @@ To reproduce the experiments in the paper, see below
 3. To reproduce regression examples on NAS-Bench, use
     ```bash
    # For NAS-Bench-101
-    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 -k wloa --dataset nasbench101
+    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench101
    
    # For NAS-Bench-201
-    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 -k wl --dataset nasbench201
-    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 -k wl --dataset nasbench201 --task cifar100
-    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 -k wl --dataset nasbench201 --task ImageNet16-120
+    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201
+    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task cifar100
+    python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task ImageNet16-120
     ```

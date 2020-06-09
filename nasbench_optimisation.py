@@ -132,22 +132,14 @@ for j in range(args.n_repeat):
     for k in args.kernels:
         # Graph kernels
         if k == 'wl':
-            k = WeisfilerLehman(h=2, node_weights=node_weights, requires_grad=args.pool_strategy == 'grad_mutate',
-                                )
-        elif k == 'wloa':
-            k = WeisfilerLehman(oa=True, h=2, node_weights=node_weights,
-                                requires_grad=args.pool_strategy == 'grad_mutate',
-                                )
+            k = WeisfilerLehman(h=2,  oa=args.dataset != 'nasbench201',
+                                node_weights=node_weights, requires_grad=args.pool_strategy == 'grad_mutate', )
         elif k == 'mlk':
             k = MultiscaleLaplacian(n=1)
         elif k == 'vh':
-            k = WeisfilerLehman(h=0, node_weights=node_weights,
-                                oa=True,
+            k = WeisfilerLehman(h=0, node_weights=node_weights, oa=args.dataset != 'nasbench201',
                                 requires_grad=args.pool_strategy == 'grad_mutate',
                                 )
-        # elif k == 'mle':
-        #     k = WeisfilerLehman(h=2, type='edge')                # Weisfiler Lehman Edge Kernel
-        # Vector kernels
         else:
             try:
                 k = getattr(kernels, k)
@@ -160,7 +152,6 @@ for j in range(args.n_repeat):
         raise ValueError("None of the kernels entered is valid. Quitting.")
     if args.strategy != 'random':
         gp = bayesopt.GraphGP(x, y, kern, verbose=args.verbose)
-        # gp.reset_XY(x2, y)
         gp.fit(wl_subtree_candidates=(0,) if args.kernels[0] == 'vh' else tuple(range(1, 3)),
                optimize_lik=args.fixed_query_seed is None,
                max_lik=args.maximum_noise

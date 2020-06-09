@@ -4,7 +4,7 @@ from bayesopt import GraphGP, random_sampling
 from kernels import *
 import matplotlib.pyplot as plt
 from perf_metrics import *
-from benchmarks import NAS201, NAS101Cifar10, NAS201edge
+from benchmarks import NAS201, NAS101Cifar10
 import tabulate, pickle
 import pandas as pd
 from matplotlib import cm
@@ -19,7 +19,6 @@ parser.add_argument('--n_repeat', type=int, default=20)
 parser.add_argument('--dataset', default='nasbench101')
 parser.add_argument('--data_path', default='data/')
 parser.add_argument('--task', default='cifar10-valid')
-parser.add_argument('--edge_graph', action='store_true')
 parser.add_argument('--load_from_cache', action='store_true')
 parser.add_argument('-p', '--plot', action='store_true')
 parser.add_argument('-k', '--kernels', default=['wl'], nargs="+")
@@ -34,9 +33,7 @@ print(options)
 graph_k = []
 for k in args.kernels:
     if k == 'wl':
-        graph_k.append(WeisfilerLehman(h=2, oa=False, type='edge' if args.edge_graph else 'subtree'))
-    elif k == 'wloa':
-        graph_k.append(WeisfilerLehman(h=2, oa=True, type='edge' if args.edge_graph else 'subtree'))
+        graph_k.append(WeisfilerLehman(h=2, oa=args.dataset != 'nasbench201', ))
     elif k == 'mlp':
         graph_k.append(MultiscaleLaplacian())
     else:
@@ -62,10 +59,7 @@ if o is None:
     if args.dataset == 'nasbench101':
         o = NAS101Cifar10(args.data_path, seed=3)
     elif args.dataset == 'nasbench201':
-        if args.edge_graph:
-            o = NAS201edge('data/', task=args.task, seed=3)
-        else:
-            o = NAS201('data/', task=args.task, seed=3)
+        o = NAS201('data/', task=args.task, seed=3)
     else:
         raise NotImplementedError
     pickle.dump(o, open(cache_path, 'wb'))
@@ -76,7 +70,7 @@ res = pd.DataFrame(np.nan, columns=table_heading, index=np.arange(args.n_repeat)
 for i in range(args.n_repeat):
     start = time.time()
     n_samples = args.n_train + args.n_test
-    X, _, _ = random_sampling(n_samples, args.dataset, edge_attr=args.edge_graph)
+    X, _, _ = random_sampling(n_samples, args.dataset,)
     Y = [-o.eval(x_)[0] for x_ in X]
 
     X_train, X_val = X[:args.n_train], X[args.n_train:]
