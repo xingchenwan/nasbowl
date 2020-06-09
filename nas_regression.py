@@ -1,16 +1,15 @@
-#  <anonymous email> | 2020
-
-from bayesopt import GraphGP, random_sampling
-from kernels import *
-import matplotlib.pyplot as plt
-from perf_metrics import *
-from benchmarks import NAS201, NAS101Cifar10
-import tabulate, pickle
-import pandas as pd
-from matplotlib import cm
-from scipy import stats
 import argparse
 import time
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import pickle
+import tabulate
+
+from bayesopt import GraphGP, random_sampling
+from benchmarks import NAS201, NAS101Cifar10
+from kernels import *
+from perf_metrics import *
 
 parser = argparse.ArgumentParser(description='Regression')
 parser.add_argument('--n_train', type=int, default=50)
@@ -96,7 +95,6 @@ for i in range(args.n_repeat):
         matplotlib.rcParams.update({'font.size': 15})
 
         plt.figure(figsize=(4, 4))
-        # plt.plot(Y_train, Y_train_preds, '.', color='black' )
         x = np.linspace(np.min(Y_train), np.max(Y_train), 100)
         plt.plot(x, x, ":", color='black')
         plt.xlabel('Train Target')

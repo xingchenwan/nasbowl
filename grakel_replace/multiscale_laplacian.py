@@ -1,31 +1,23 @@
 """Multiscale Laplacian Graph Kernel as defined in :cite:`kondor2016multiscale`."""
-# Author: Ioannis Siglidis <y.siglidis@gmail.com>
-# License: BSD 3 clause
-# Python 2/3 cross-compatibility import
+
 from __future__ import print_function
 
 import collections
-import warnings
-import numpy as np
 import time
-
-from numbers import Real
+import warnings
 from math import exp
+from numbers import Real
 
-from sklearn.utils import check_random_state
-
+import numpy as np
+from grakel.graph import Graph
+from grakel.kernels import Kernel
 from numpy.linalg import eig
+from numpy.linalg import eigvals
 from numpy.linalg import inv
 from numpy.linalg import multi_dot
-from numpy.linalg import eigvals
-
-from grakel.graph import Graph
 from scipy.sparse.csgraph import laplacian
-
-from grakel.kernels import Kernel
-
-# Python 2/3 cross-compatibility import
 from six import iteritems
+from sklearn.utils import check_random_state
 
 positive_eigenvalue_limit = float("+1e-6")
 

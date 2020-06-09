@@ -1,16 +1,18 @@
 # This script tests the graph BO on NASBench101 dataset
 
-from benchmarks import NAS101Cifar10, NAS201
-from bayesopt.generate_test_graphs import *
-from bayesopt.acquisitions import *
-import bayesopt, kernels
-import tabulate
 import argparse
-import pandas as pd
 import pickle
 import time  # time module to randomise seed outside the fixed seed regimes
-from misc.random_string import random_generator
+
+import pandas as pd
+import tabulate
+import os
+import bayesopt
+import kernels
+from bayesopt.generate_test_graphs import *
+from benchmarks import NAS101Cifar10, NAS201
 from kernels import *
+from misc.random_string import random_generator
 
 parser = argparse.ArgumentParser(description='GraphGP BO')
 parser.add_argument('--dataset', default='nasbench101', help='The benchmark dataset to run the experiments. '
@@ -104,7 +106,6 @@ if o is None:
 
     else:
         raise NotImplementedError("Required dataset " + args.dataset + " is not implemented!")
-    # pickle.dump(o, open(cache_path, 'wb'))
 
 # init_data_list = []
 for j in range(args.n_repeat):
@@ -169,7 +170,6 @@ for j in range(args.n_repeat):
     for i in range(args.max_iters):
         # Generate a pool of candidates from a pre-specified strategy
         if args.pool_strategy == 'random':
-            # pool.extend(random_sampling(args.pool_size))
             pool, _, unpruned_pool = random_sampling(args.pool_size, benchmark=args.dataset, return_unpruned_archs=True)
         elif args.pool_strategy == 'mutate':
             pool, unpruned_pool = mutation(x, y, benchmark=args.dataset, pool_size=args.pool_size,
@@ -189,11 +189,9 @@ for j in range(args.n_repeat):
                                                        observed_archs_unpruned=x_unpruned if args.mutate_unpruned_archs
                                                        else None,
                                                        allow_isomorphism=not args.no_isomorphism)
-        else:  # regularised evolutionary algorithm
+        else:
             pass
 
-        # concatenate the pool with the evaluated positions
-        #
         if args.strategy != 'random':
             if args.acquisition == 'UCB':
                 a = bayesopt.GraphUpperConfidentBound(gp)
@@ -223,7 +221,6 @@ for j in range(args.n_repeat):
         next_test = [o.test(x_).item() for x_ in next_x]
         # Evaluate all candidates in the pool to obtain the regret (i.e. true best *in the pool* compared to the one
         # returned by the Bayesian optimiser proposal)
-        # print(pool)
         pool_vals = [o.eval(x_)[0] for x_ in pool]
         if gp is not None:
             pool_preds = gp.predict(pool, preserve_comp_graph=args.pool_strategy == 'grad_mutate')
@@ -243,14 +240,12 @@ for j in range(args.n_repeat):
                    optimize_lik=args.fixed_query_seed is None,
                    max_lik=args.maximum_noise
                    )
-            # optimize_lik=True)
 
             # Compute the GP posterior distribution on the trainning inputs
             train_preds = gp.predict(x, preserve_comp_graph=args.pool_strategy == 'grad_mutate')
             train_preds = [t.detach().cpu().numpy() for t in train_preds]
 
         zipped_ranked = list(sorted(zip(pool_vals, pool), key=lambda x: x[0]))[::-1]
-        # rank_regret = [i[1] for i in zipped_ranked].index(next_x)
         true_best_pool = np.exp(-zipped_ranked[0][0])
 
         # Updating evaluation metrics
@@ -288,7 +283,6 @@ for j in range(args.n_repeat):
             plt.errorbar(pool_vals, pool_preds[0],
                          fmt='.', yerr=np.sqrt(np.diag(pool_preds[1])),
                          capsize=2, color='b', alpha=0.2)
-            # plt.xlim([2.5, None])
             plt.grid(True)
             plt.subplot(222)
             # Acquisition function

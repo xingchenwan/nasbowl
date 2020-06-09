@@ -1,8 +1,3 @@
-#  | 6 March 2020
-import pandas as pd
-import numpy as np
-
-
 class ObjectiveFunction:
     """An abstract class specifying a prototype objective function"""
 

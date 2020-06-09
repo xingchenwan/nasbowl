@@ -1,7 +1,4 @@
-# Class to extract the vectorial x1_features of the x1_graphs
 import networkx as nx
-import numpy as np
-
 
 class FeatureExtractor:
     """
@@ -64,11 +61,6 @@ class FeatureExtractor:
         for i in self.input_index:
             result.append(list(nx.all_simple_paths(self.g, i, self.output_index)))
         return result
-
-    # todo: potentially implement some strategies for aggregations in the case the graph has more than 1 input node.
-    # todo: the exact computation of the maximum distance between the input and output is NP hard, and as such the
-    #  exact computation is no different compared to the BANANAS enumeration of the path encoding. Potentially replace
-    #  exact computation for large graphs with some of the scalable approximation algorithms for longest path?
 
     @property
     def number_of_paths(self):

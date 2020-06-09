@@ -1,7 +1,6 @@
 # Custom (and minimalist) implementations of some of the common vectorial kernels
 # - this is done so that the back prop of gradients will not be affected
 
-import gpytorch
 import torch
 from math import sqrt
 import numpy as np
@@ -15,7 +14,6 @@ class Stationary:
     def __init__(self, lengthscale=1., outputscale=1., **kwargs):
         super(Stationary, self).__init__(**kwargs)
         self.lengthscale = lengthscale
-        # self.has_lengthscale = True
         self._gram = None
         self._train = None
         self.outputscale = outputscale
@@ -128,7 +126,6 @@ def _unscaled_distance(X, X2=None, sq_dist=False):
             X1sq = torch.sum(X ** 2, 1)
             X2sq = torch.sum(X2 ** 2, 1)
             r2 = -2 * X @ X2.t() + X1sq[:, None] + X2sq[None, :]
-        # ugly code: square rooting at 0 cause autograd to break in pytorch
         r2 += 1e-8
         if not sq_dist:
             r2 = torch.sqrt(r2)

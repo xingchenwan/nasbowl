@@ -1,7 +1,8 @@
-## Code Repository for NAS-BOWL (Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel)
+# Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel (NAS-BOWL)
 
+This is the code Repository for our proposed method NAS-BOWL.
 
-#  Prerequisites and Dependencies
+##  Prerequisites and Dependencies
 This code repository contains the submission of NAS-BOWL. To run the codes, please see the prerequisites below:
 1. Download the NAS-Bench-101 and NAS-Bench-201 datasets and place the data
 files under ```data/``` path. We expect these files:
@@ -40,7 +41,7 @@ tqdm==4.32.1
 networkx
 ```
 
-# Running Experiments
+## Running Experiments
 To reproduce the experiments in the paper, see below
 
 1. Search on NAS-Bench-101

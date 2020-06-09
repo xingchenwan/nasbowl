@@ -1,28 +1,22 @@
 """The weisfeiler lehman kernel :cite:`shervashidze2011weisfeiler`."""
-# Author: Ioannis Siglidis <y.siglidis@gmail.com>
-# License: BSD 3 clause
-# (Rather extensively) modified by  <anonymous email>
+# This code is extensively modified by  us
 
 import collections
+import logging
 import warnings
+from collections import OrderedDict
+from copy import deepcopy
 
 import numpy as np
-
+import torch
+from grakel.graph import Graph
+from grakel.kernels import Kernel
+from six import iteritems
+from six import itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from grakel.graph import Graph
-from grakel.kernels import Kernel
-from grakel_replace import VertexHistogram, EdgeHistogram
-
-# Python 2/3 cross-compatibility import
-from six import iteritems
-from six import itervalues
-import logging
-from copy import deepcopy
-
-from collections import OrderedDict
-import torch
+from grakel_replace import VertexHistogram
 
 
 class WeisfeilerLehman(Kernel):
@@ -174,7 +168,6 @@ class WeisfeilerLehman(Kernel):
             raise ValueError('method call must be called either from fit ' +
                              'or fit-transform')
         elif hasattr(self, '_X_diag'):
-            # Clean _X_diag value
             delattr(self, '_X_diag')
 
         # Input validation and parsing

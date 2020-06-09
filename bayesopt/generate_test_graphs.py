@@ -1,17 +1,14 @@
-#  | 5 March 2020
-# Modifed from nas_benchmarks
-
-import os
+import collections
+import copy
+import logging
+import random
+from copy import deepcopy
 
 import ConfigSpace
-import numpy as np
-from copy import deepcopy
-import collections
-import random
 import networkx as nx
-import copy
 import networkx.algorithms.isomorphism as iso
-import logging
+import numpy as np
+
 from kernels import GraphKernels, WeisfilerLehman
 from .gp import GraphGP
 
@@ -113,7 +110,6 @@ def create_nasbench201_graph(op_node_labelling, edge_attr=False):
         G.remove_edges_from(remove_edge_list)
 
         # after removal, some op nodes have no input nodes and some have no output nodes
-        # --> remove these redundant nodes
         nodes_to_be_further_removed = []
         for n_id in G.nodes():
             in_edges = G.in_edges(n_id)
@@ -159,7 +155,6 @@ def create_nasbench201_graph(op_node_labelling, edge_attr=False):
         G.remove_nodes_from(remove_nodes_list)
 
         # after removal, some op nodes have no input nodes and some have no output nodes
-        # --> remove these redundant nodes
         nodes_to_be_further_removed = []
         for n_id in G.nodes():
             in_edges = G.in_edges(n_id)
@@ -243,8 +238,6 @@ def mutate_arch(parent_arch, benchmark, return_unpruned_arch=True):
                 mutation_failed = False
             except:
                 continue
-            # if pruned_adjacency_matrix.all() != parent_adjacency_matrix.all() or pruned_node_labeling != parent_node_labeling:
-            #
 
         child_arch = nx.from_numpy_array(pruned_adjacency_matrix, create_using=nx.DiGraph)
 
@@ -349,8 +342,6 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
         edge_key = edge_item[0]
         edge_encode_str = edge_item[1]
         edge_grads = [all_features[key] for key in list(all_features.keys()) if edge_encode_str in key]
-        # Change to edge_grads = [] so that the mutation probability of edge is not affected.
-        # edge_grads = []
         edge_grads_sum = np.sum(edge_grads)
         edge_prob_dic[edge_key] = edge_grads_sum
 
@@ -419,7 +410,6 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
             else:
                 child_arch.add_edges_from(choosen_item)
         else:
-            # print(f'mutate node {choosen_item[0]}')
             # a node is chosen
             op_list_copy = op_list.copy()
             op_grad_list_copy = op_grad_list.copy()
@@ -592,7 +582,6 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
         child_arch.node[choosen_item[0]]['op_name'] = choosen_op[0]
         node_labelling[choosen_item[0]] = choosen_op[0]
 
-    # pruning
     try:
         child_arch_pruned = create_nasbench201_graph(node_labelling[1:-1], edge_attr=False)
     except:
@@ -649,7 +638,6 @@ def mutation(observed_archs, observed_errors,
             parent_arch_list = arch.name.split("|")
             op_label_rebuild = [str_i[:-2] for str_i in parent_arch_list if "~" in str_i]
             mutation_prob = mutation_rate / len(OPS_201)
-            child = None
             while True:
                 try:
                     for idx, parent_choice in enumerate(op_label_rebuild):
@@ -707,8 +695,6 @@ def mutation(observed_archs, observed_errors,
         population.append(model)
 
     best_archs = [arch for arch in sorted(population, key=lambda i: -i.error)][:n_best]
-    # pools = [[] for _ in range(len(best_archs))]
-    # unpruned_pools = [[] for _ in range(len(best_archs))]
     evaluation_pool, evaluation_pool_unpruned = [], []
     per_arch = n_mutate // n_best
     for arch in best_archs:
@@ -748,10 +734,7 @@ def mutation(observed_archs, observed_errors,
                     if iso.is_isomorphic(child.arch, arch.arch):
                         patience_ -= 1
                         continue
-                    # for prev_obs in observed_archs:
-                    #     if iso.is_isomorphic(child.arch, prev_obs):
-                    #         skip = True
-                    #         break
+
                     for prev_edit in evaluation_pool:
                         if iso.is_isomorphic(child.arch, prev_edit, ):
                             skip = True
@@ -764,8 +747,6 @@ def mutation(observed_archs, observed_errors,
             evaluation_pool.append(child.arch)
             evaluation_pool_unpruned.append(child.unpruned_arch)
             n_child += 1
-    # evaluation_pool = list(chain(*pools))
-    # evaluation_pool_unpruned = list(chain(*unpruned_pools))
 
     # Add some random archs into the evaluation pool, if either 1) patience is reached or 2)
     nrandom_archs = max(pool_size - len(evaluation_pool), 0)
@@ -836,24 +817,17 @@ def grad_guided_mutation(observed_archs, observed_errors,
     per_arch = n_mutate // n_best
 
     for arch in best_archs:
-        # TODO NEED TO COMPUTE FEATURE_NAMES and FEATURE GRADS of ALL THE BEST/PARENT ARCHS
-        # grad, grad_var = GP.dmu_dphi([arch.arch], compute_grad_var=True)
-        # feature_names = GP.kernels[0].feature_map(True)
-        # grads = grad[0].numpy()
-        # feature_grads = grads[np.where(grads != 0)]
 
         n_child = 0
         patience_ = patience
         while n_child < per_arch and patience_ > 0:
             child = Model()
-            # child.arch, child.unpruned_arch = _banana_mutate(arch.unpruned_arch if observed_archs_unpruned is not None
-            #                                                  else arch.arch, benchmark=benchmark, )
 
             # Compute the gradient of the GP posterior, at the best locations.
             feature_names = kern.feature_map(flatten=True)
             grads, grad_var = gp.dmu_dphi([arch.arch])
             grads = grads[0].numpy()
-            feature_grads = grads[np.where(grads != 0)]  # todo: fix this
+            feature_grads = grads[np.where(grads != 0)]
             if benchmark == 'nasbench101':
                 if observed_archs_unpruned is not None:
                     child.arch, child.unpruned_arch = guided_mutate_arch101(arch.arch, feature_names, feature_grads,
@@ -876,9 +850,8 @@ def grad_guided_mutation(observed_archs, observed_errors,
                 continue
 
             # guided_mutate_arch(arch.unpruned_arch)
-            # skip 2-node archs
             if benchmark == 'nasbench101':
-                if len(child.arch.nodes) <= 3:  # Skip input-output 3-graphs in nasbench101 search space
+                if len(child.arch.nodes) <= 3:
                     patience_ -= 1
                     continue
                 if np.sum(np.array(nx.adjacency_matrix(child.arch).todense())) > MAX_EDGES:
@@ -886,7 +859,7 @@ def grad_guided_mutation(observed_archs, observed_errors,
                     continue
 
             elif benchmark == 'nasbench201':
-                if len(child.arch.nodes) == 0:  # Skip empty graphs in nasbench201 search space
+                if len(child.arch.nodes) == 0:
                     patience_ -= 1
                     continue
 
@@ -946,10 +919,9 @@ def random_sampling(pool_size=100, benchmark='nasbench101',
     """
     evaluation_pool = []
     pruned_labeling_list = []
-    unpruned_evaluation_pool = []  # The unpruned architectures. These might contain invalid architectures
+    unpruned_evaluation_pool = []
     nasbench201_op_label_list = []
     nasbench_config_list = []
-    # attribute_name_list = []
     while len(evaluation_pool) < pool_size:
         if benchmark == 'nasbench101':
             # generate random architecture for nasbench101
@@ -1011,11 +983,6 @@ def random_sampling(pool_size=100, benchmark='nasbench101',
             rand_arch = create_nasbench201_graph(op_labeling, edge_attr)
             nasbench_config_list.append(config)
 
-            # IN Nasbench201, it is possible that invalid graphs consisting entirely from None and skip-line are
-            # generated; remove these invalid architectures.
-
-            # Also remove if the number of edges is zero. This is is possible, one example in NAS-Bench-201:
-            # '|none~0|+|avg_pool_3x3~0|nor_conv_3x3~1|+|none~0|avg_pool_3x3~1|none~2|'
             if len(rand_arch) == 0 or rand_arch.number_of_edges() == 0:
                 continue
 
@@ -1023,7 +990,6 @@ def random_sampling(pool_size=100, benchmark='nasbench101',
         evaluation_pool.append(rand_arch)
         if return_unpruned_archs:
             unpruned_evaluation_pool.append(unpruned_rand_arch)
-        # attribute_name_list.append(nx.get_node_attributes(rand_arch, 'op_name'))
     if save_config:
         if return_unpruned_archs:
             return evaluation_pool, nasbench_config_list, unpruned_evaluation_pool
@@ -1045,4 +1011,3 @@ def build_graph(graph_model, graph_params, seed):
         return nx.random_graphs.barabasi_albert_graph(Nodes, M, seed)
     elif graph_model == 'WS':
         return nx.random_graphs.connected_watts_strogatz_graph(Nodes, K, P, tries=200, seed=seed)
-        # return nx.random_graphs.watts_strogatz_graph(Nodes, K, P, seed=seed)

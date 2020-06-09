@@ -1,15 +1,13 @@
-#  <anonymous email> 2020
+import logging
 
-from grakel_replace import WeisfeilerLehman as _WL
-from grakel_replace import VertexHistogram, EdgeHistogram
-# The Vertex Histogram file was modified to include option of using OA kernel.
+import torch
+from grakel.kernels import ShortestPathAttr
 from grakel.utils import graph_from_networkx
+
+from grakel_replace import VertexHistogram, EdgeHistogram
+from grakel_replace import WeisfeilerLehman as _WL
 from kernels.vectorial_kernels import Stationary
 from .graph_kernel import GraphKernels
-import logging
-from grakel.kernels import ShortestPathAttr
-import torch
-import networkx as nx
 from .utils import transform_to_undirected
 
 

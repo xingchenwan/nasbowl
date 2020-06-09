@@ -1,5 +1,3 @@
-#  | 22 Feb 2020
-
 from kernels.utils import *
 
 

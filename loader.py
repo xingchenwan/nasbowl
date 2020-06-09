@@ -23,7 +23,6 @@ def load_from_pickle(path: str, n_samples: int,  log_validation=True):
         y = dump['validation_err'][i]
         X.append(G)
         Y.append(np.log(y)) if log_validation else Y.append(y)
-        # labeldict = {i: num2name[G.nodes[i]['op_name']] for i in range(G.number_of_nodes())}
     return X, Y
 
 
@@ -37,7 +36,4 @@ def build_graph(A, nodes_names, create_directed_graph=True) -> nx.Graph:
     for i, n in enumerate(nodes_names):
         G.nodes[i]['op_name'] = name2num[n]
 
-    # nx.draw(G)
-    # plt.show()
-    # print(type(G))
     return G

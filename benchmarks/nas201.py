@@ -1,12 +1,11 @@
-# For use of the NAS-Bench-201 dataset version NAS-Bench-201-v1_0-e61699.pth
-
 import os
-import numpy as np
-import networkx as nx
-from benchmarks.objectives import ObjectiveFunction
-from nas_201_api import NASBench201API as API
-import ConfigSpace
 import random
+
+import ConfigSpace
+import numpy as np
+from nas_201_api import NASBench201API as API
+
+from benchmarks.objectives import ObjectiveFunction
 
 
 class NAS201(ObjectiveFunction):
@@ -15,7 +14,7 @@ class NAS201(ObjectiveFunction):
                  use_12_epochs_result=False,
                  seed=None):
         """
-        data_dir: data directory that contains NAS-Bench-201-v1_0-e61699.pth file
+        data_dir: data directory that contains NAS-Bench-201-v1_0-096897.pth file
         task: the target image tasks. Options: cifar10-valid, cifar100, ImageNet16-120
         log_scale: whether output the objective in log scale
         negative: whether output the objective in negative form
@@ -25,7 +24,7 @@ class NAS201(ObjectiveFunction):
               seed=None will select the seed randomly
         """
 
-        self.api = API(os.path.join(data_dir, 'NAS-Bench-201-v1_0-e61699.pth'))
+        self.api = API(os.path.join(data_dir, 'NAS-Bench-201-v1_1-096897.pth'))
         if isinstance(task, list):
             task = task[0]
         self.task = task
@@ -76,8 +75,6 @@ class NAS201(ObjectiveFunction):
         self.y_test_acc = []
         self.costs = []
         self.negative = negative
-        # self.optimal_val =   # lowest mean validation error
-        # self.y_star_test =   # lowest mean test error
 
     def _retrieve(self, G, budget, which='eval'):
         #  set random seed for evaluation
@@ -94,11 +91,9 @@ class NAS201(ObjectiveFunction):
 
         # find architecture index
         arch_str = G.name
-        # print(arch_str)
 
         try:
             arch_index = self.api.query_index_by_arch(arch_str)
-            acc_results = self.api.query_by_index(arch_index, self.task, use_12epochs_result=self.use_12_epochs_result,)
             if seed is not None and 3 <= seed < 777:
                 # some architectures only contain 1 seed result
                 acc_results = self.api.get_more_info(arch_index, self.task, None,
@@ -106,18 +101,17 @@ class NAS201(ObjectiveFunction):
                                                      is_random=False)
                 val_acc = acc_results['valid-accuracy'] / 100
                 test_acc = acc_results['test-accuracy'] / 100
+                train_time = acc_results['train-all-time']
             else:
                 try:
+                    # some architectures only contain 1 seed result
                     acc_results = self.api.get_more_info(arch_index, self.task, None,
                                                          use_12epochs_result=self.use_12_epochs_result,
                                                          is_random=seed)
                     val_acc = acc_results['valid-accuracy'] / 100
                     test_acc = acc_results['test-accuracy'] / 100
-                    # val_acc = acc_results[seed].get_eval('x-valid')['accuracy'] / 100
-                    # if self.task == 'cifar10-valid':
-                    #     test_acc = acc_results[seed].get_eval('ori-test')['accuracy'] / 100
-                    # else:
-                    #     test_acc = acc_results[seed].get_eval('x-test')['accuracy'] / 100
+                    train_time = acc_results['train-all-time']
+
                 except:
                     # some architectures only contain 1 seed result
                     acc_results = self.api.get_more_info(arch_index, self.task, None,
@@ -125,21 +119,21 @@ class NAS201(ObjectiveFunction):
                                                          is_random=False)
                     val_acc = acc_results['valid-accuracy'] / 100
                     test_acc = acc_results['test-accuracy'] / 100
+                    train_time = acc_results['train-all-time']
 
-            auxiliary_info = self.api.query_meta_info_by_index(arch_index,
-                                                               use_12epochs_result=self.use_12_epochs_result)
-            cost_info = auxiliary_info.get_compute_costs(self.task)
+
+            cost_info = self.api.get_cost_info(arch_index, self.task)
 
             # auxiliary cost results such as number of flops and number of parameters
             cost_results = {'flops': cost_info['flops'], 'params': cost_info['params'],
-                            'latency': cost_info['latency']}
+                            'latency': cost_info['latency'], 'train_time': train_time}
 
         except FileNotFoundError:
             val_acc = 0.01
             test_acc = 0.01
             print('missing arch info')
             cost_results = {'flops': None, 'params': None,
-                            'latency': None}
+                            'latency': None, 'train_time': None}
 
         # store val and test performance + auxiliary cost information
         self.X.append(arch_str)
@@ -160,16 +154,17 @@ class NAS201(ObjectiveFunction):
             y = err
         if self.negative:
             y = -y
-        return y
+        return y, cost_results
 
     def eval(self, G, budget=199, n_repeat=1):
         # input is a list of graphs [G1,G2, ....]
         if n_repeat == 1:
-            return self._retrieve(G, budget, 'eval'),  [np.nan]
-        return np.mean(np.array([self._retrieve(G, budget, 'eval') for _ in range(n_repeat)])), [np.nan]
+            return self._retrieve(G, budget, 'eval')
+        return np.mean(np.array([self._retrieve(G, budget, 'eval')[0] for _ in range(n_repeat)])),\
+               [self._retrieve(G, budget, 'eval') for _ in range(n_repeat)]
 
     def test(self, G, budget=199, n_repeat=1):
-        return np.mean(np.array([self._retrieve(G, budget, 'test') for _ in range(n_repeat)]))
+        return np.mean(np.array([self._retrieve(G, budget, 'test')[0] for _ in range(n_repeat)]))
 
     def get_results(self, ignore_invalid_configs=False):
 
@@ -202,83 +197,9 @@ class NAS201(ObjectiveFunction):
 
     @staticmethod
     def get_configuration_space():
-        # for unpruned graph
         cs = ConfigSpace.ConfigurationSpace()
 
         ops_choices = ['nor_conv_3x3', 'nor_conv_1x1', 'avg_pool_3x3', 'skip_connect', 'none']
         for i in range(6):
             cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("edge_%d" % i, ops_choices))
         return cs
-
-
-class NAS201edge(NAS201):  # TODO
-
-    def _retrieve(self, G, budget, which='eval'):
-        #  set random seed for evaluation
-        seed_list = [777, 888, 999]
-        if self.seed is None:
-            seed = random.choice(seed_list)
-        elif self.seed >= 3:
-            seed = self.seed
-        else:
-            seed = seed_list[self.seed]
-
-        # find architecture index
-        arch_str = G.name
-        # print(arch_str)
-
-        try:
-            arch_index = self.api.query_index_by_arch(arch_str)
-            acc_results = self.api.query_by_index(arch_index, self.task)
-            if seed >= 3:
-                # some architectures only contain 1 seed result
-                acc_results = self.api.get_more_info(arch_index, self.task, None, self.use_12_epochs_result, False)
-                val_acc = acc_results['valid-accuracy'] / 100
-                test_acc = acc_results['test-accuracy'] / 100
-            else:
-                try:
-                    val_acc = acc_results[seed].get_eval('x-valid')['accuracy'] / 100
-                    if self.task == 'cifar10-valid':
-                        test_acc = acc_results[seed].get_eval('ori-test')['accuracy'] / 100
-                    else:
-                        test_acc = acc_results[seed].get_eval('x-test')['accuracy'] / 100
-                except:
-                    # some architectures only contain 1 seed result
-                    acc_results = self.api.get_more_info(arch_index, self.task, None, self.use_12_epochs_result, False)
-                    val_acc = acc_results['valid-accuracy'] / 100
-                    test_acc = acc_results['test-accuracy'] / 100
-
-            auxiliary_info = self.api.query_meta_info_by_index(arch_index)
-            cost_info = auxiliary_info.get_compute_costs(self.task)
-
-            # auxiliary cost results such as number of flops and number of parameters
-            cost_results = {'flops': cost_info['flops'], 'params': cost_info['params'],
-                            'latency': cost_info['latency']}
-
-        except FileNotFoundError:
-            val_acc = 0.01
-            test_acc = 0.01
-            print('missing arch info')
-            cost_results = {'flops': None, 'params': None,
-                            'latency': None}
-
-        # store val and test performance + auxiliary cost information
-        self.X.append(arch_str)
-        self.y_valid_acc.append(val_acc)
-        self.y_test_acc.append(test_acc)
-        self.costs.append(cost_results)
-
-        if which == 'eval':
-            err = 1. - val_acc
-        elif which == 'test':
-            err = 1. - test_acc
-        else:
-            raise ValueError("Unknown query parameter: which = " + str(which))
-
-        if self.log_scale:
-            y = np.log(err)
-        else:
-            y = err
-        if self.negative:
-            y = -y
-        return y

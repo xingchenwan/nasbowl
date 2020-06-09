@@ -1,5 +1,3 @@
-#  | 3 Mar 2020
-
 from kernels.weisfilerlehman import GraphKernels
 from kernels.vectorial_kernels import Stationary
 import torch

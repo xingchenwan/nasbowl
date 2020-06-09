@@ -96,8 +96,6 @@ class NAS101Cifar10(ObjectiveFunction):
         self.costs = []
         self.model_spec_list = []
         self.negative = negative
-        # self.optimal_val = 0.04944576819737756  # lowest mean validation error
-        # self.y_star_test = 0.056824247042338016  # lowest mean test error
 
     def reinitialize(self, negative=False, seed=None):
         self.negative = negative
@@ -127,7 +125,6 @@ class NAS101Cifar10(ObjectiveFunction):
 
         model_spec = ModelSpec_Modified(adjacency_matrix, node_labeling)
         try:
-            # data = self.dataset.query(model_spec, epochs=budget)
             fixed_stat, computed_stat = self.dataset.get_metrics_from_spec(model_spec)
             data = {}
             data['module_adjacency'] = fixed_stat['module_adjacency']
@@ -171,9 +168,6 @@ class NAS101Cifar10(ObjectiveFunction):
         return y, cost
 
     def eval(self, G, budget=108, n_repeat=1, use_banana=False):
-        """
-        todo: use_bananas has not been updated to return the training details in addition to the validation/test acc.
-        """
         # input is a list of graphs [G1,G2, ....]
         if use_banana:
             return self.banana_retrieve(G, 'eval')
@@ -234,7 +228,6 @@ class NAS101Cifar10(ObjectiveFunction):
         self.costs.append(runtime)
 
     def reset_tracker(self):
-        # __init__() sans the data loading for multiple runs
         self.X = []
         self.y_valid = []
         self.y_test = []
@@ -277,7 +270,6 @@ class NAS101Cifar10(ObjectiveFunction):
 
     @staticmethod
     def get_configuration_space():
-        # for unpruned graph
         cs = ConfigSpace.ConfigurationSpace()
 
         ops_choices = ['conv1x1-bn-relu', 'conv3x3-bn-relu', 'maxpool3x3']
@@ -290,27 +282,3 @@ class NAS101Cifar10(ObjectiveFunction):
             cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("edge_%d" % i, [0, 1]))
         return cs
 
-
-if __name__ == '__main__':
-    import pickle
-    output_path = '../data/'
-    # with open(os.path.join(output_path, 'valid_arch_samples_pruned'), 'rb') as outfile:
-    #     res = pickle.load(outfile)
-    #
-    # idx = 1
-    # A = res['model_graph_specs'][idx]['adjacency']
-    # nl = res['model_graph_specs'][idx]['node_labels']
-    A = np.array([[0, 1, 1, 0, 0, 1, 1],    # input layer
-                  [0, 0, 0, 0, 0, 1, 0],    # 1x1 conv
-                  [0, 0, 0, 1, 0, 0, 0],    # 3x3 conv
-                  [0, 0, 0, 0, 1, 0, 0],    # 3x3 max-pool
-                  [0, 0, 0, 0, 0, 1, 0],    # 3x3 conv
-                  [0, 0, 0, 0, 0, 0, 1],    # 3x3 conv
-                  [0, 0, 0, 0, 0, 0, 0]])   # output layer
-    G = nx.from_numpy_array(A, create_using=nx.DiGraph)
-    nl = ['input', 'conv1x1-bn-relu', 'conv3x3-bn-relu', 'maxpool3x3', 'conv3x3-bn-relu', 'conv3x3-bn-relu', 'output']
-    for i, n in enumerate(nl):
-        G.node[i]['op_name'] = n
-    nascifar10 = NAS101Cifar10(data_dir=output_path,seed=4)
-    f = nascifar10.eval
-    result = f(G)

@@ -1,12 +1,10 @@
-#  | Feb 2020
 
 
 from abc import ABC
-import torch
-import numpy as np
+
 import networkx as nx
-import random
-import time
+import numpy as np
+import torch
 
 
 class BaseAcquisition(ABC):
@@ -94,11 +92,7 @@ class GraphExpectedImprovement(BaseAcquisition):
 
     def propose_location(self, candidates, top_n=5, return_distinct=True):
         """top_n: return the top n candidates wrt the acquisition function."""
-        # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
-        # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
-        # print(eis)
         self.iters += 1
-        # best_idx = self.candidate_idx[int(torch.max(eis, 0)[1])]
         if return_distinct:
             eis = np.array([self.eval(c) for c in candidates])
             eis_, unique_idx = np.unique(eis, return_index=True)

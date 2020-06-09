@@ -1,14 +1,14 @@
-#  | 6 Mar 2020
+
+import logging
+from copy import deepcopy
 
 import networkx as nx
-import logging
+
 from kernels import GraphKernels, Stationary
-# GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from kernels import SumKernel
 from kernels import WeisfilerLehman
 from .graph_features import FeatureExtractor
 from .utils import *
-from copy import deepcopy
 
 
 # A vanilla GP with RBF kernel
@@ -146,8 +146,6 @@ class GraphGP:
             torch.tensor([self.vector_theta_bounds[0] * self.vector_theta_bounds[1]] * self.feature_d,
                          )) if \
             self.feature_d else None
-        # theta_graph = torch.sqrt(torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])).\
-        #     requires_grad_(True)
         # Only requires gradient of lengthscale if there is any vectorial input
         if self.feature_d: theta_vector.requires_grad_(True)
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
@@ -207,7 +205,7 @@ class GraphGP:
                                             1]) if theta_vector is not None and theta_vector.is_leaf else None
                     likelihood.clamp_(1e-5, max_lik) if likelihood is not None and likelihood.is_leaf else None
                     layer_weights.clamp_(0., 1.) if layer_weights is not None and layer_weights.is_leaf else None
-                # print('grad,', theta_graph)
+
             K_i, logDetK = compute_pd_inverse(K, likelihood)
         # Apply the optimal hyperparameters
         self.weights = weights.clone() / torch.sum(weights)
@@ -221,8 +219,6 @@ class GraphGP:
         for k in self.sum_kernels.kernels:
             if isinstance(k, Stationary):
                 k.lengthscale = theta_vector.clamp(self.vector_theta_bounds[0], self.vector_theta_bounds[1])
-            # elif isinstance(k, GraphKernels) and k.lengthscale_ is not None:
-            #    k.lengthscale_ = theta_graph.clamp(self.graph_theta_bounds[0], self.graph_theta_bounds[1])
         self.sum_kernels.weights = weights.clone()
         if self.verbose:
             print('Optimisation summary: ')
@@ -231,7 +227,6 @@ class GraphGP:
             print('Weights: ', self.weights)
             print('Lik:', self.likelihood)
             print('Optimal layer weights', layer_weights)
-        # print('Graph Lengthscale', theta_graph)
 
     def predict(self, X_s, preserve_comp_graph=False):
         """Kriging predictions"""
@@ -251,7 +246,6 @@ class GraphGP:
         X_all = self.x + X_s
         # print(X_s_features)
         if self.x_features is not None:
-            # print(self.x_features.shape, X_s_features.shape)
             X_features_all = torch.cat([self.x_features, X_s_features])
         else:
             X_features_all = None
@@ -440,7 +434,6 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
     lik: likelihood
     lengthscale: if using RBF kernel for successive embedding, the list of lengthscale to be grid searched over
     """
-    # lik = 1e-6
     assert len(train_x) == len(train_y)
     best_nlml = torch.tensor(np.inf)
     best_subtree_depth = None
@@ -456,17 +449,12 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
             k.change_se_params({'lengthscale': i[1]})
         k.change_kernel_params({'h': i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
-        # print(K)
         K_i, logDetK = compute_pd_inverse(K, lik)
-        # print(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-        # print(i, nlml)
         if nlml < best_nlml:
             best_nlml = nlml
             best_subtree_depth, best_lengthscale = i
             best_K = torch.clone(K)
-    # print("h: ", best_subtree_depth, "theta: ", best_lengthscale)
-    # print(best_subtree_depth)
     k.change_kernel_params({'h': best_subtree_depth})
     if k.se is not None:
         k.change_se_params({'lengthscale': best_lengthscale})

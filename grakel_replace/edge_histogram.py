@@ -1,6 +1,4 @@
 """The Edge Histogram kernel as defined in :cite:`sugiyama2015halting`."""
-# Author: Ioannis Siglidis <y.siglidis@gmail.com>
-# License: BSD 3 clause
 from warnings import warn
 
 from collections import Counter
@@ -11,7 +9,6 @@ from grakel.graph import Graph
 from numpy import zeros
 from scipy.sparse import csr_matrix
 
-# Python 2/3 cross-compatibility import
 from six import iteritems
 from six import itervalues
 from .vertex_histogram import VertexHistogram
