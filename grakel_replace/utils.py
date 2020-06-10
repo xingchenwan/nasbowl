@@ -49,6 +49,8 @@ def calculate_kernel_matrix_as_tensor(X, Y=None, oa=False, se_kernel=None, norma
     if Y is None:
         if se_kernel is not None:
             K = se_kernel.forward(X, X)
+        # elif oa:
+        #     K = min_lp(X, X)
         else:
             K = X @ X.t()
         if normalize:
@@ -60,6 +62,8 @@ def calculate_kernel_matrix_as_tensor(X, Y=None, oa=False, se_kernel=None, norma
 
         if se_kernel is not None:
             K = se_kernel.forward(X, Y)
+        # elif oa:
+        #     K = min_lp(X, Y)
         else:
             K = Y @ X.t()
         if normalize:

@@ -14,7 +14,7 @@ from benchmarks import NAS101Cifar10, NAS201
 from kernels import *
 from misc.random_string import random_generator
 
-parser = argparse.ArgumentParser(description='GraphGP BO')
+parser = argparse.ArgumentParser(description='NAS-BOWL')
 parser.add_argument('--dataset', default='nasbench101', help='The benchmark dataset to run the experiments. '
                                                              'options = ["nasbench101", "nasbench201"].')
 parser.add_argument('--task', default=['cifar10-valid'],
@@ -45,7 +45,6 @@ parser.add_argument('-k', '--kernels', default=['wl'],
                          'the weights between the kernels will be automatically determined'
                          ' during optimisation (weights will be deemed as additional '
                          'hyper-parameters.')
-parser.add_argument('-p', '--plot', action='store_true', help='whether to plot the procedure each iteration.')
 parser.add_argument('--batch_size', type=int, default=5, help='Number of samples to evaluate')
 parser.add_argument('-v', '--verbose', action='store_true')
 parser.add_argument('--seed', type=int, default=None)
@@ -272,43 +271,6 @@ for j in range(args.n_repeat):
         else:
             table = table.split('\n')[2]
         print(table)
-
-        if args.plot and args.strategy != 'random':
-            import matplotlib.pyplot as plt
-
-            plt.subplot(221)
-            # True validation error vs GP posterior
-            plt.title('Val')
-            plt.plot(pool_vals, pool_vals, '.')
-            plt.errorbar(pool_vals, pool_preds[0],
-                         fmt='.', yerr=np.sqrt(np.diag(pool_preds[1])),
-                         capsize=2, color='b', alpha=0.2)
-            plt.grid(True)
-            plt.subplot(222)
-            # Acquisition function
-            plt.title('Acquisition')
-            plt.plot(pool_vals, eis, 'b+')
-            plt.xlim([2.5, None])
-            plt.subplot(223)
-            plt.title('Train')
-
-            y1, y2 = y[:-args.batch_size], y[-args.batch_size:]
-            plt.plot(y, y, ".")
-            plt.plot(y1, train_preds[0][:-args.batch_size], 'b+')
-            plt.plot(y2, train_preds[0][-args.batch_size:], 'r+')
-
-            if args.verbose:
-                from perf_metrics import *
-
-                print('Spearman: ', spearman(pool_vals, pool_preds[0]))
-            plt.subplot(224)
-            # Best metrics so far
-            xaxis = np.arange(len(best_tests))
-            plt.plot(xaxis, best_tests, "-.", c='C1', label='Best test so far')
-            plt.plot(xaxis, best_vals, "-.", c='C2', label='Best validation so far')
-            plt.legend()
-            plt.show()
-
         res.iloc[i, :] = values
 
     if args.save_path is not None:
