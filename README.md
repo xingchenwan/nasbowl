@@ -9,10 +9,8 @@ files under ```data/``` path. We expect these files:
     
     NAS-Bench-101: ```nasbench_only102.tfrecord```
     
-    NAS-Bench-201: ```NAS-Bench-201-v1_0-e61699.pth``` OR ```NAS-Bench-201-v1_1-096897.pth```
+    NAS-Bench-201: ```NAS-Bench-201-v1_1-096897.pth```
     
-    (Please note if the older NAS-Bench-201 data is used, training time statistics will not be available.)
-
     and install the relevant NAS-Bench-101 and NAS-Bench-201 APIs.
 
 2. Install the prerequisite packages via ```pip``` or ```conda```. We used Anaconda Python 3.7 for our experiments.
@@ -21,10 +19,8 @@ ConfigSpace==0.4.12
 Cython==0.29.16
 future==0.18.2
 gensim==3.8.0
-gpytorch>=0.3.5
 grakel==0.1b7
 graphviz>=0.5.1
-matplotlib==3.1.1
 numpy==1.16.4
 pandas==0.25.1
 scikit-learn==0.21.2
