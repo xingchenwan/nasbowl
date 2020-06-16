@@ -65,3 +65,14 @@ To reproduce the experiments in the paper, see below
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task cifar100
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task ImageNet16-120
     ```
+
+## Citation
+If you find this repo to be useful for your research, please cite:
+```bash
+@article{ru2020neural,
+    title={Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel},
+    author={Binxin Ru and Xingchen Wan and Xiaowen Dong and Michael Osborne},
+    journal={arXiv preprint arXiv:2006.07556}
+    year={2020},
+}
+```
