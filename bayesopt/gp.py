@@ -1,15 +1,13 @@
-
-import logging
-from copy import deepcopy
-
 import networkx as nx
-import gpytorch
-
+import logging
 from kernels import GraphKernels, Stationary
+# GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from kernels import SumKernel
 from kernels import WeisfilerLehman
 from .graph_features import FeatureExtractor
 from .utils import *
+from copy import deepcopy
+import gpytorch
 
 
 # A vanilla GP with RBF kernel
@@ -30,11 +28,11 @@ class GraphGP:
     def __init__(self, train_x, train_y,
                  kernels: list,
                  vectorial_features: list = None,
-                 likelihood=1e-4,
+                 likelihood=1e-3,
                  weights=None,
                  vector_theta_bounds: tuple = (1e-5, 0.1),
                  graph_theta_bounds: tuple = (1e-1, 1.e1),
-                 verbose=True   ,
+                 verbose=False,
                  ):
         assert len(train_x) == train_y.shape[0], 'mismatch of length between train and test GP'
         assert all([isinstance(x, nx.Graph) for x in train_x]), \
@@ -48,7 +46,7 @@ class GraphGP:
         if self.n_vector_kernels > 1:
             raise NotImplementedError
 
-        self.x = train_x
+        self.x = train_x[:]
         self.feature_d = None
         self.vectorial_feactures = vectorial_features
         if self.n_vector_kernels > 0:
@@ -57,7 +55,7 @@ class GraphGP:
         else:
             self.x_features, self.x_features_min, self.x_features_max = [None] * 3
         self.n = len(self.x)
-        self.y_ = train_y
+        self.y_ = deepcopy(train_y)
         self.y, self.y_mean, self.y_std = normalize_y(train_y)
 
         if weights is not None:
@@ -147,6 +145,8 @@ class GraphGP:
             torch.tensor([self.vector_theta_bounds[0] * self.vector_theta_bounds[1]] * self.feature_d,
                          )) if \
             self.feature_d else None
+        # theta_graph = torch.sqrt(torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])).\
+        #     requires_grad_(True)
         # Only requires gradient of lengthscale if there is any vectorial input
         if self.feature_d: theta_vector.requires_grad_(True)
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
@@ -206,7 +206,7 @@ class GraphGP:
                                             1]) if theta_vector is not None and theta_vector.is_leaf else None
                     likelihood.clamp_(1e-5, max_lik) if likelihood is not None and likelihood.is_leaf else None
                     layer_weights.clamp_(0., 1.) if layer_weights is not None and layer_weights.is_leaf else None
-
+                # print('grad,', theta_graph)
             K_i, logDetK = compute_pd_inverse(K, likelihood)
         # Apply the optimal hyperparameters
         self.weights = weights.clone() / torch.sum(weights)
@@ -216,18 +216,26 @@ class GraphGP:
         self.likelihood = likelihood.item()
         self.theta_vector = theta_vector
         self.layer_weights = layer_weights
+        self.nlml = nlml.detach().cpu() if nlml is not None else None
 
         for k in self.sum_kernels.kernels:
             if isinstance(k, Stationary):
                 k.lengthscale = theta_vector.clamp(self.vector_theta_bounds[0], self.vector_theta_bounds[1])
+            # elif isinstance(k, GraphKernels) and k.lengthscale_ is not None:
+            #    k.lengthscale_ = theta_graph.clamp(self.graph_theta_bounds[0], self.graph_theta_bounds[1])
         self.sum_kernels.weights = weights.clone()
         if self.verbose:
             print('Optimisation summary: ')
             print('Optimal NLML: ', nlml)
             print('Lengthscales: ', theta_vector)
+            try:
+                print('Optimal h: ', self.kernels[0]._h)
+            except AttributeError:
+                pass
             print('Weights: ', self.weights)
             print('Lik:', self.likelihood)
             print('Optimal layer weights', layer_weights)
+        # print('Graph Lengthscale', theta_graph)
 
     def predict(self, X_s, preserve_comp_graph=False):
         """Kriging predictions"""
@@ -247,6 +255,7 @@ class GraphGP:
         X_all = self.x + X_s
         # print(X_s_features)
         if self.x_features is not None:
+            # print(self.x_features.shape, X_s_features.shape)
             X_features_all = torch.cat([self.x_features, X_s_features])
         else:
             X_features_all = None
@@ -285,7 +294,9 @@ class GraphGP:
                 standardize_x(self._get_vectorial_features(self.x, self.vectorial_feactures))
 
     def dmu_dphi(self, X_s=None,
-                 compute_grad_var=False):
+                 # compute_grad_var=False,
+                 average_across_features=True,
+                 average_across_occurrences=False):
         """
         Compute the derivative of the GP posterior mean at the specified input location with respect to the
         *vector embedding* of the graph (e.g., if using WL-subtree, this function computes the gradient wrt
@@ -342,9 +353,10 @@ class GraphGP:
 
         alpha = (self.K_i @ self.y).double().reshape(1, -1)
         dmu_dphi = []
-        dmu_dphi_var = [] if compute_grad_var else None
+        # dmu_dphi_var = [] if compute_grad_var else None
 
         Ks_handles = []
+        feature_matrix = []
         for j, x_s in enumerate(X_s):
             jacob_vecs = []
             if V_s is None:
@@ -353,56 +365,115 @@ class GraphGP:
                 handles = self.sum_kernels.forward_t(self.weights, [x_s], V_s[j])
             Ks_handles.append(handles)
             # Each handle is a 2-tuple. first element is the Gram matrix, second element is the leaf variable
+            feature_vectors = []
             for handle in handles:
                 k_s, y, _ = handle
                 # k_s is output, leaf is input, alpha is the K_i @ y term which is constant.
                 # When compute_grad_var is not required, computational graphs do not need to be saved.
-                jacob_vecs.append(torch.autograd.grad(outputs=k_s, inputs=y,
-                                                      grad_outputs=alpha, retain_graph=compute_grad_var)[0])
-
+                jacob_vecs.append(torch.autograd.grad(outputs=k_s, inputs=y, grad_outputs=alpha, retain_graph=False)[0])
+                feature_vectors.append(y)
+            feature_matrix.append(feature_vectors)
             jacob_vecs = torch.cat(jacob_vecs)
             dmu_dphi.append(jacob_vecs)
         # dmu_dphi is of shape N_t x K x D (or N_t x D if K is 1)
 
-        if compute_grad_var:
-            for j, x_s in enumerate(X_s):
-                if V_s is None:
-                    handles = self.sum_kernels.forward_t(self.weights, [x_s], gr1=[x_s])
-                else:
-                    handles = self.sum_kernels.forward_t(self.weights, [x_s], V_s[j], gr1=[x_s], x1=V_s[j])
-
-                vars = []
-                for handle in handles:
-                    k_ss, x2, x1 = handle
-                    # compute the second derivative of k_ss w.r.t the leaf variables (d^2k/dx1dx2)
-
-                    # first compute dk_ss / dx1
-                    dkss_dx1 = gradient(k_ss[0][0], x1)
-
-                    # Then differentiate it again wrt x2
-                    dk2ss_dx1dx2 = jacobian(dkss_dx1, x2)
-
-                    # Extract the diagonal elements of the first term
-                    vars.append(torch.diag(dk2ss_dx1dx2))
-
-                for k, handle in enumerate(Ks_handles[j]):
-                    k_s, x2, _ = handle
-                    dks_dx1 = jacobian(k_s, x2)
-                    tmp = dks_dx1.t() @ self.K_i.double() @ dks_dx1
-                    # Since the first term (d^2k/dx1dx2 is the Gram matrix wrt the test samples themselves, it is
-                    # possible that there are features not seen in the training set, leading to a longer feature
-                    # vector with new unseen features concatenated at the end. Use this operation to remove these
-                    # features
-                    if vars[k].shape != tmp.shape[0]:
-                        vars[k] = vars[k][:tmp.shape[0]]
-                    vars[k] -= torch.diag(tmp)
-                    vars[k] = vars[k].reshape(1, -1)
-
-                vars = torch.cat(vars).clamp_min_(1e-5)
-                dmu_dphi_var.append(vars)
+        # if compute_grad_var:
+        #     for j, x_s in enumerate(X_s):
+        #         if V_s is None:
+        #             handles = self.sum_kernels.forward_t(self.weights, [x_s], gr1=[x_s])
+        #         else:
+        #             handles = self.sum_kernels.forward_t(self.weights, [x_s], V_s[j], gr1=[x_s], x1=V_s[j])
+        #
+        #         vars = []
+        #         for handle in handles:
+        #             k_ss, x2, x1 = handle
+        #             # compute the second derivative of k_ss w.r.t the leaf variables (d^2k/dx1dx2)
+        #
+        #             # first compute dk_ss / dx1
+        #             dkss_dx1 = gradient(k_ss[0][0], x1)
+        #
+        #             # Then differentiate it again wrt x2
+        #             dk2ss_dx1dx2 = jacobian(dkss_dx1, x2)
+        #
+        #             # Extract the diagonal elements of the first term
+        #             vars.append(torch.diag(dk2ss_dx1dx2))
+        #
+        #         for k, handle in enumerate(Ks_handles[j]):
+        #             k_s, x2, _ = handle
+        #             dks_dx1 = jacobian(k_s, x2)
+        #             tmp = dks_dx1.t() @ self.K_i.double() @ dks_dx1
+        #             # Since the first term (d^2k/dx1dx2 is the Gram matrix wrt the test samples themselves, it is
+        #             # possible that there are features not seen in the training set, leading to a longer feature
+        #             # vector with new unseen features concatenated at the end. Use this operation to remove these
+        #             # features
+        #             if vars[k].shape != tmp.shape[0]:
+        #                 vars[k] = vars[k][:tmp.shape[0]]
+        #             vars[k] -= torch.diag(tmp)
+        #             vars[k] = vars[k].reshape(1, -1)
+        #
+        #         vars = torch.cat(vars).clamp_min_(1e-5)
+        #         dmu_dphi_var.append(vars)
 
         # dmu_dphi_var is of shape N_t x K x D (or N_t x D if K is 1)
-        return dmu_dphi, dmu_dphi_var
+        feature_matrix = torch.cat([f[0] for f in feature_matrix])
+        if average_across_features:
+            dmu_dphi = torch.cat(dmu_dphi)
+            # compute the weighted average of the gradient across N_t.
+            # feature matrix is of shape N_t x K x D
+            avg_mu, avg_var, incidences = get_grad(dmu_dphi, feature_matrix, average_across_occurrences)
+            return avg_mu, avg_var, incidences
+        return dmu_dphi, None, feature_matrix.sum(dim=0) if average_across_occurrences else feature_matrix
+
+
+def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
+    """
+    Average across the samples via a Monte Carlo sampling scheme. Also estimates the empirical variance.
+    :param average_occurrences: if True, do a weighted summation based on the frequency distribution of the occurrence
+        to compute a gradient *per each feature*. Otherwise, each different occurence (\phi_i = k) will get a different
+        gradient estimate.
+    """
+    assert grad_matrix.shape == feature_matrix.shape
+    # Prune out the all-zero columns that pop up sometimes
+    valid_cols = []
+    for col_idx in range(feature_matrix.size(1)):
+        if not torch.all(feature_matrix[:, col_idx] == 0):
+            valid_cols.append(col_idx)
+    feature_matrix = feature_matrix[:, valid_cols]
+    grad_matrix = grad_matrix[:, valid_cols]
+
+    N, D = feature_matrix.shape
+    if average_occurrences:
+        avg_grad = torch.zeros(D)
+        avg_grad_var = torch.zeros(D)
+        for d in range(D):
+            current_feature = feature_matrix[:, d].clone().detach()
+            instances, indices, counts = torch.unique(current_feature, return_inverse=True, return_counts=True)
+            weight_vector = torch.tensor([counts[i] for i in indices]).type(torch.float)
+            weight_vector /= weight_vector.sum()
+            mean = torch.sum(weight_vector * grad_matrix[:, d])
+            # Compute the empirical variance of gradients
+            variance = torch.sum(weight_vector * grad_matrix[:, d] ** 2) - mean ** 2
+            avg_grad[d] = mean
+            avg_grad_var[d] = variance
+        return avg_grad, avg_grad_var, feature_matrix.sum(dim=0)
+    else:
+        # The maximum number possible occurrences -- 7 is an example, if problem occurs, maybe we can increase this
+        # number. But for now, for both NAS-Bench datasets, this should be more than enough!
+        max_occur = 7
+        avg_grad = torch.zeros(D, max_occur)
+        avg_grad_var = torch.zeros(D, max_occur)
+        incidences = torch.zeros(D, max_occur)
+        for d in range(D):
+            current_feature = feature_matrix[:, d].clone().detach()
+            instances, indices, counts = torch.unique(current_feature, return_inverse=True,
+                                                      return_counts=True)
+            for i, val in enumerate(instances):
+                # Find index of all feature counts that are equal to the current val
+                feature_at_val = grad_matrix[current_feature == val]
+                avg_grad[d, int(val)] = torch.mean(feature_at_val)
+                avg_grad_var[d, int(val)] = torch.var(feature_at_val)
+                incidences[d, int(val)] = counts[i]
+        return avg_grad, avg_grad_var, incidences
 
 
 # Optimize Graph kernel
@@ -435,6 +506,7 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
     lik: likelihood
     lengthscale: if using RBF kernel for successive embedding, the list of lengthscale to be grid searched over
     """
+    # lik = 1e-6
     assert len(train_x) == len(train_y)
     best_nlml = torch.tensor(np.inf)
     best_subtree_depth = None
@@ -450,12 +522,17 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
             k.change_se_params({'lengthscale': i[1]})
         k.change_kernel_params({'h': i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
+        # print(K)
         K_i, logDetK = compute_pd_inverse(K, lik)
+        # print(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
+        # print(i, nlml)
         if nlml < best_nlml:
             best_nlml = nlml
             best_subtree_depth, best_lengthscale = i
             best_K = torch.clone(K)
+    # print("h: ", best_subtree_depth, "theta: ", best_lengthscale)
+    # print(best_subtree_depth)
     k.change_kernel_params({'h': best_subtree_depth})
     if k.se is not None:
         k.change_se_params({'lengthscale': best_lengthscale})

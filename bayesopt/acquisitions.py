@@ -1,10 +1,9 @@
-
-
 from abc import ABC
-
-import networkx as nx
-import numpy as np
 import torch
+import numpy as np
+import networkx as nx
+import random
+import time
 
 
 class BaseAcquisition(ABC):
@@ -63,7 +62,10 @@ class GraphExpectedImprovement(BaseAcquisition):
         Return the negative expected improvement at the query point x2
         """
         from torch.distributions import Normal
-        mu, cov = self.gp.predict(x)
+        try:
+            mu, cov = self.gp.predict(x)
+        except:
+            return -1.   # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
         mu_star = self._get_incumbent()
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
@@ -92,7 +94,11 @@ class GraphExpectedImprovement(BaseAcquisition):
 
     def propose_location(self, candidates, top_n=5, return_distinct=True):
         """top_n: return the top n candidates wrt the acquisition function."""
+        # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
+        # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
+        # print(eis)
         self.iters += 1
+        # best_idx = self.candidate_idx[int(torch.max(eis, 0)[1])]
         if return_distinct:
             eis = np.array([self.eval(c) for c in candidates])
             eis_, unique_idx = np.unique(eis, return_index=True)

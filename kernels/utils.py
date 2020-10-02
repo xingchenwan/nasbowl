@@ -147,6 +147,21 @@ def get_dataset_attributes(Gn,
                 if len(list(nx.find_cycle(G))) > 0:
                     subs.add('cyclic')
                     break
+        # else:
+        #     # @todo: this method does not work for big graph with large amount of edges like D&D, try a better way.
+        #     upper = np.amin([nx.number_of_edges(G) for G in Gn]) * 2 + 10
+        #     for G in Gn:
+        #         if (nx.number_of_edges(G) < upper):
+        #             cyc = list(nx.simple_cycles(G.to_directed()))
+        #             if any(len(i) > 2 for i in cyc):
+        #                 subs.add('cyclic')
+        #                 break
+        #     if 'cyclic' not in subs:
+        #         for G in Gn:
+        #             cyc = list(nx.simple_cycles(G.to_directed()))
+        #             if any(len(i) > 2 for i in cyc):
+        #                 subs.add('cyclic')
+        #                 break
 
         return subs
 
@@ -296,10 +311,13 @@ import sys
 def parallel_me(func, func_assign, var_to_assign, itr, len_itr=None, init_worker=None,
                 glbv=None, method=None, n_jobs=None, chunksize=None, itr_desc='',
                 verbose=True):
-
+    '''
+    '''
     if method == 'imap_unordered':
         if glbv:  # global varibles required.
-
+            #            def init_worker(v_share):
+            #                global G_var
+            #                G_var = v_share
             if n_jobs is None:
                 n_jobs = multiprocessing.cpu_count()
             with Pool(processes=n_jobs, initializer=init_worker,
@@ -446,6 +464,7 @@ class S2VGraph(object):
 
 
 # Some networkx functions
+
 def add_node_with_attributes(g: nx.Graph, node_id: int, attr: dict) -> nx.Graph:
     if node_id not in g.nodes():
         g.add_node(node_id)
@@ -467,6 +486,11 @@ def unscaled_dist(X, X2=None, sqrt=True):
     X2sq = torch.sum(X2 ** 2, 1)
     r2 = -2 * X @ X2.t() + (X1sq[:, None] + X2sq[None, :])
     r2.clamp_min_(0.)
+    # elif type == 'oa':
+    #     # optimal assignment - histogram intersection
+    #     r2 = torch.sum(torch.min(X, X2))
+    # else:
+    #     raise ValueError(type + " is not understood. Possible types: ['euclidean', 'dirac', 'oa']")
     return torch.sqrt(r2) if sqrt else r2
 
 
@@ -489,6 +513,7 @@ def histogram_dict_to_tensor(label2freq: dict, ndim: int, boolean=False):
     e.g.
     given dict of {0:1, 3:1, 1:2}, the resulting tensor is [1, 2, 0, 1]
     """
+    # print(label2freq)
     vector = [0] * ndim
     for k, v in label2freq.items():
         if boolean:

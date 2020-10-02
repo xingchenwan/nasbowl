@@ -1,4 +1,5 @@
 import networkx as nx
+from grakel.utils import graph_from_networkx
 
 
 def find_node(gr, att, val):
@@ -7,7 +8,8 @@ def find_node(gr, att, val):
 
 
 def find_2_structure(gr, att, encoding):
-    """Applicable for the second-layer WL features (i.e. the nodes + their 1-neighbours)"""
+    """Applicable for the second-layer WL features (i.e. the nodes + their 1-neighbours).
+    This is actually faulty. Do not use this line."""
     if "~" in encoding:
         # Temporary fix
         encoding = encoding.split("~")
@@ -26,3 +28,22 @@ def find_2_structure(gr, att, encoding):
     for c in counts:
         if c == counter: return True
     return False
+
+
+def find_wl_feature(test, feature, kernel, ):
+    """Return the number of occurrence of --feature-- in --test--, based on a --kernel--."""
+    import numpy as np
+    if not isinstance(test, list): test = [test]
+    test = graph_from_networkx(test, 'op_name', )
+
+    # feat_map = list(kernel.feature_map(flatten=True).values())
+    feat_map = kernel.feature_map(flatten=False)
+    len_feat_map = [len(f) for f in feat_map.values()]
+    try:
+        idx = list(kernel.feature_map(flatten=True).values()).index(feature[0])
+    except KeyError:
+        raise KeyError("Feature " + str(feature) + ' is not found in the training set of the kernel!')
+    embedding = kernel.kern.transform(test, return_embedding_only=True)
+    for i, em in enumerate(embedding):
+        embedding[i] = em.flatten()[:len_feat_map[i]]
+    return np.hstack(embedding)[idx]

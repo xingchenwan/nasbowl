@@ -1,6 +1,71 @@
-
 import numpy as np
 import torch
+import networkx as nx
+import logging
+
+
+def add_color(arch, color_map):
+    """Add a node attribute called color, which color the nodes based on the op type"""
+    for i, (node, data) in enumerate(arch.nodes(data=True)):
+        try:
+            arch.nodes[i]['color'] = color_map[data['op_name']]
+        except KeyError:
+            logging.warning('node operation ' + color_map[data['op_name']] + ' is not found in the color_map! Skipping')
+    return arch
+
+
+def encoding_to_nx(encoding: str, color_map: dict = None):
+    """Convert a feature encoding (example 'input~maxpool3x3~conv3x3') to a networkx graph
+    for WL features up to h=1.
+    color_map: dict. When defined, supplement the encoding motifs with a color information that can be
+    useful for later plotting.
+    WARNING: this def is not tested for higher-order WL features, and thus the code might break."""
+    g_nx = nx.DiGraph()
+    nodes = encoding.split("~")
+    for i, n in enumerate(nodes):
+        if color_map is None:
+            g_nx.add_node(
+                i, op_name=n
+            )
+        else:
+            try:
+                g_nx.add_node(
+                    i, op_name=n,
+                    color=color_map[n]
+                )
+            except KeyError:
+                logging.warning('node operation ' + n + ' is not found in the color_map! Skipping')
+                g_nx.add_node(
+                    i, op_name=n
+                )
+        if i > 0:
+            g_nx.add_edge(0, i)
+    return g_nx
+
+
+def _preprocess(X, y=None):
+    from .generate_test_graphs import prune
+    tmp = []
+    valid_indices = []
+    for idx, c in enumerate(X):
+        node_labeling = list(nx.get_node_attributes(c, 'op_name').values())
+        try:
+            res = prune(nx.to_numpy_array(c), node_labeling)
+            if res is None:
+                continue
+            c_new, label_new = res
+            c_nx = nx.from_numpy_array(c_new, create_using=nx.DiGraph)
+            for i, n in enumerate(label_new):
+                c_nx.nodes[i]['op_name'] = n
+        except KeyError:
+            print('Pruning error!')
+            c_nx = c
+        tmp.append(c_nx)
+        valid_indices.append(idx)
+    if y is not None: y = y[valid_indices]
+    if y is None:
+        return tmp
+    return tmp, y
 
 
 def normalize_y(y: torch.Tensor):
@@ -45,7 +110,7 @@ def compute_log_marginal_likelihood(K_i, logDetK, y, normalize=True,
     prior: A pytorch distribution object. If specified, the hyperparameter prior will be taken into consideration and
     we use Type-II MAP instead of Type-II MLE (compute log_posterior instead of log_evidence)
     """
-    lml = -0.5 * y.t() @ K_i @ y + 0.5 * logDetK - y.shape[0] / 2. * torch.log(2 * torch.tensor(np.pi,))
+    lml = -0.5 * y.t() @ K_i @ y + 0.5 * logDetK - y.shape[0] / 2. * torch.log(2 * torch.tensor(np.pi, ))
     if log_prior_dist is not None:
         lml -= log_prior_dist
     return lml / y.shape[0] if normalize else lml
@@ -65,7 +130,7 @@ def compute_pd_inverse(K, jitter=1e-5):
             Kc = torch.cholesky(K_)
             is_successful = True
         except RuntimeError:
-             fail_count += 1
+            fail_count += 1
     if not is_successful:
         print(K)
         raise RuntimeError("Gram matrix not positive definite despite of jitter")
@@ -174,7 +239,7 @@ def annotate_heatmap(im, data=None, valfmt="{x2:.2f}",
     if threshold is not None:
         threshold = im.norm(threshold)
     else:
-        threshold = im.norm(data.max())/2.
+        threshold = im.norm(data.max()) / 2.
 
     # Set default alignment to center, but allow it to be
     # overwritten by textkw.
