@@ -1,4 +1,4 @@
-# Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel (NAS-BOWL)
+# Interpretable Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel (NAS-BOWL)
 
 This is the code Repository for our proposed method NAS-BOWL.
 
@@ -15,7 +15,7 @@ files under ```data/``` path. We expect these files:
 
 2. Install the prerequisite packages via ```pip``` or ```conda```. We used Anaconda Python 3.7 for our experiments.
 ```bash
-ConfigSpace==0.4.12
+ConfigSpace==0.4.11
 Cython==0.29.16
 future==0.18.2
 gensim==3.8.0
@@ -65,14 +65,32 @@ To reproduce the experiments in the paper, see below
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task cifar100
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task ImageNet16-120
     ```
+    For transfer learning results on NAS-Bench-201, run
+    ```
+    python3 -u transfer_nasbench201.py 
+    ```
 
-## Citation
-If you find this repo to be useful for your research, please cite:
-```bash
-@article{ru2020neural,
-    title={Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel},
-    author={Binxin Ru and Xingchen Wan and Xiaowen Dong and Michael Osborne},
-    journal={arXiv preprint arXiv:2006.07556}
-    year={2020},
-}
-```
+4. To run open-domain search on DARTS search space (currently only single-GPU is supported):
+    ```bash
+    python3 -u run_darts.py --cutout --auxiliary --search_space darts
+    ```
+   Note that due to the high stochasticity on the CIFAR-10 task, you might get the exact same cell from the paper. The code
+   above will take approximate 3 days to finish on a single modern GPU.
+   
+5. To reproduce interpretability results (e.g. motifs), we have attached a sample code snippet
+in ```./bayesopt/interpreter.py``` (running this file directly will run the code in ```__main__```).
+
+## References
+We used materials from the following public public repositories. We would like to express our gratitude towards
+these authors/codebase maintainers
+    
+   1. Ying, Chris, et al. "Nas-bench-101: Towards reproducible neural architecture search." 
+   International Conference on Machine Learning (2019). [https://github.com/google-research/nasbench]
+   2. White, Colin, Willie Neiswanger, and Yash Savani. "Bananas: Bayesian optimization with neural architectures for neural architecture search." 
+   arXiv preprint arXiv:1910.11858 (2019). [https://github.com/naszilla/bananas]
+   3. Liu, Hanxiao, Karen Simonyan, and Yiming Yang. "Darts: Differentiable architecture search." 
+   arXiv preprint arXiv:1806.09055 (2018). [https://github.com/quark0/darts]
+   4. Dong, Xuanyi, and Yi Yang. "Nas-bench-201: Extending the scope of reproducible neural architecture search." 
+   International Conference on Learning Representations (2020). [https://github.com/D-X-Y/NAS-Bench-201]
+
+
