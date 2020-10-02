@@ -216,7 +216,7 @@ class GraphGP:
         self.likelihood = likelihood.item()
         self.theta_vector = theta_vector
         self.layer_weights = layer_weights
-        self.nlml = nlml.detach().cpu()
+        self.nlml = nlml.detach().cpu() if nlml is not None else None
 
         for k in self.sum_kernels.kernels:
             if isinstance(k, Stationary):

@@ -1,5 +1,3 @@
-# Use the ARD Weisfeiler-Lehman kernel to perform model selection using automatic relevance determination
-
 from bayesopt.utils import *
 from bayesopt.utils import _preprocess
 from kernels import WeisfilerLehman

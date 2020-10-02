@@ -1,5 +1,3 @@
-# This script tests the graph BO on NASBench101 dataset
-
 import argparse
 import pickle
 import time  # time module to randomise seed outside the fixed seed regimes
@@ -19,8 +17,6 @@ parser.add_argument('--dataset', default='nasbench101', help='The benchmark data
                                                              'options = ["nasbench101", "nasbench201"].')
 parser.add_argument('--task', default=['cifar10-valid'],
                     nargs="+", help='the benchmark task *for nasbench201 only*.')
-parser.add_argument('--task_weights', default=None, help='the weights assigned to the tasks *for n201 only*')
-
 parser.add_argument("--use_12_epochs_result", action='store_true',
                     help='Whether to use the statistics at the end of the 12th epoch, instead of using the final '
                          'statistics *for nasbench201 only*')
@@ -29,9 +25,8 @@ parser.add_argument("--data_path", default='data/')
 parser.add_argument('--n_init', type=int, default=30, help='number of initialising points')
 parser.add_argument("--max_iters", type=int, default=17, help='number of maximum iterations')
 parser.add_argument('--pool_size', type=int, default=100, help='number of candidates generated at each iteration')
-parser.add_argument('--mutate_size', type=int, help='number of mutation candidates. Only applicable for mutate'
-                                                    'or grad_mutate. By default, half of the pool_size is generated'
-                                                    'from mutation.')
+parser.add_argument('--mutate_size', type=int, help='number of mutation candidates. By default, half of the pool_size '
+                                                    'is generated from mutation.')
 parser.add_argument('--pool_strategy', default='mutate', help='the pool generation strategy. Options: random,'
                                                               'mutate')
 parser.add_argument('--save_path', default='results/', help='path to save log file')
@@ -55,8 +50,6 @@ parser.add_argument('--fixed_query_seed', type=int, default=None,
                          'validation and test accuracies. Options in [None, 0, 1, 2]. If None the query will be '
                          'random.')
 parser.add_argument('--load_from_cache', action='store_true', help='Whether to load the pickle of the dataset. ')
-parser.add_argument('--use_node_weight', action='store_true', help='Whether to use different node weights. Experimental'
-                                                                   'feature')
 parser.add_argument('--mutate_unpruned_archs', action='store_true',
                     help='Whether to mutate on the unpruned archs. This option is only valid if mutate '
                          'is specified as the pool_strategy')
@@ -116,7 +109,7 @@ for j in range(args.n_repeat):
     x, x_config, x_unpruned = random_sampling(args.n_init, benchmark=args.dataset, save_config=True,
                                               return_unpruned_archs=True)
     y_np_list = [o.eval(x_) for x_ in x]
-    y = torch.tensor([y[0] for y in y_np_list])
+    y = torch.tensor([y[0] for y in y_np_list]).float()
     train_details = [y[1] for y in y_np_list]
 
     # The test accuracy from NASBench. This is retrieved only for reference, and is not used in BO at all
@@ -126,17 +119,14 @@ for j in range(args.n_repeat):
     unpruned_pool = x_unpruned[:]
     kern = []
 
-    node_weights = None
-
     for k in args.kernels:
         # Graph kernels
         if k == 'wl':
-            k = WeisfilerLehman(h=2,  oa=args.dataset != 'nasbench201',
-                                node_weights=node_weights,)
+            k = WeisfilerLehman(h=2, oa=args.dataset != 'nasbench201',)
         elif k == 'mlk':
             k = MultiscaleLaplacian(n=1)
         elif k == 'vh':
-            k = WeisfilerLehman(h=0, node_weights=node_weights, oa=args.dataset != 'nasbench201',)
+            k = WeisfilerLehman(h=0, oa=args.dataset != 'nasbench201',)
         else:
             try:
                 k = getattr(kernels, k)
@@ -149,11 +139,9 @@ for j in range(args.n_repeat):
         raise ValueError("None of the kernels entered is valid. Quitting.")
     if args.strategy != 'random':
         gp = bayesopt.GraphGP(x, y, kern, verbose=args.verbose)
-        gp.fit(wl_subtree_candidates=(0,) if args.kernels[0] == 'vh' else tuple(range(1, 3)),
+        gp.fit(wl_subtree_candidates=(0,) if args.kernels[0] == 'vh' else tuple(range(1, 4)),
                optimize_lik=args.fixed_query_seed is None,
-               max_lik=args.maximum_noise
-               #optimize_lik=True,
-               )
+               max_lik=args.maximum_noise)
     else:
         gp = None
 
@@ -215,12 +203,12 @@ for j in range(args.n_repeat):
         x.extend(next_x)
         if args.pool_strategy in ['mutate']:
             x_unpruned.extend(next_x_unpruned)
-        y = torch.cat((y, torch.tensor(next_y).view(-1)))
-        test = torch.cat((test, torch.tensor(next_test).view(-1)))
+        y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
+        test = torch.cat((test, torch.tensor(next_test).view(-1))).float()
 
         if args.strategy != 'random':
             gp.reset_XY(x, y)
-            gp.fit(wl_subtree_candidates=(0,) if args.kernels[0] == 'vh' else tuple(range(1, 3)),
+            gp.fit(wl_subtree_candidates=(0,) if args.kernels[0] == 'vh' else tuple(range(1, 4)),
                    optimize_lik=args.fixed_query_seed is None,
                    max_lik=args.maximum_noise
                    )
