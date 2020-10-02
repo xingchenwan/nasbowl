@@ -1,14 +1,17 @@
-import logging
+# Xingchen Wan <xwan@robots.ox.ac.uk> 2020
 
-import torch
-from grakel.kernels import ShortestPathAttr
-from grakel.utils import graph_from_networkx
-
-from grakel_replace import VertexHistogram, EdgeHistogram
 from grakel_replace import WeisfeilerLehman as _WL
+from grakel_replace import VertexHistogram, EdgeHistogram
+# The Vertex Histogram file was modified to include option of using OA kernel.
+from grakel.utils import graph_from_networkx
 from kernels.vectorial_kernels import Stationary
 from .graph_kernel import GraphKernels
+import logging
+from grakel.kernels import ShortestPathAttr
+import torch
+import networkx as nx
 from .utils import transform_to_undirected
+import numpy as np
 
 
 class WeisfilerLehman(GraphKernels):
@@ -183,7 +186,6 @@ class WeisfilerLehman(GraphKernels):
         This allows future Jacobian-vector product to be efficiently computed.
         """
         from grakel_replace.utils import calculate_kernel_matrix_as_tensor
-        import numpy as np
         if self.undirected:
             gr2 = transform_to_undirected(gr2)
 
@@ -227,6 +229,10 @@ class WeisfilerLehman(GraphKernels):
         -------
 
         """
+        if not self.requires_grad:
+            logging.warning('Requires_grad flag is off -- in this case, there is risk that the element order in the '
+                        'feature map DOES NOT correspond to the order in the feature matrix. To suppress this warning,'
+                        'when initialising the WL kernel, do WeisfilerLehman(requires_grad=True)')
         if self._gram is None: return None
         if not flatten:
             return self.kern._label_node_attr
@@ -236,3 +242,27 @@ class WeisfilerLehman(GraphKernels):
                 for k, v in map_.items():
                     res.update({k: v})
             return res
+
+    def feature_value(self, X_s):
+        """Given a list of architectures X_s, compute their WL embedding of size N_s x D, where N_s is the length
+        of the list and D is the number of training set features.
+
+        Returns:
+            embedding: torch.Tensor of shape N_s x D, described above
+            names: list of shape D, which has 1-to-1 correspondence to each element of the embedding matrix above
+        """
+        if not self.requires_grad:
+            logging.warning('Requires_grad flag is off -- in this case, there is risk that the element order in the '
+                        'feature map DOES NOT correspond to the order in the feature matrix. To suppress this warning,'
+                        'when initialising the WL kernel, do WeisfilerLehman(requires_grad=True)')
+        feat_map = self.feature_map(flatten=False)
+        len_feat_map = [len(f) for f in feat_map.values()]
+        X_s = graph_from_networkx(X_s, self.node_label, )
+        embedding = self.kern.transform(X_s, return_embedding_only=True)
+        for j, em in enumerate(embedding):
+            # Remove some of the spurious features that pop up sometimes
+            embedding[j] = em[:, :len_feat_map[j]]
+
+        # Generate the final embedding
+        embedding = torch.tensor(np.concatenate(embedding, axis=1))
+        return embedding, list(self.feature_map(flatten=True).values())

@@ -17,9 +17,6 @@ import pickle
 import time
 import torchvision.transforms as transforms
 
-# logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-#                     format='%(asctime)s %(message)s', datefmt='%m/%d %I:%M:%S %p')
-
 
 class DARTSTrainer:
     def __init__(self,

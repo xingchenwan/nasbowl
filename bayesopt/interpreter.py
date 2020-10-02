@@ -286,11 +286,13 @@ if __name__ == '__main__':
     import pickle
     import seaborn as sns
 
-    e = pickle.load(open('../data/nasbench101.pickle', 'rb'))
+    # Change this line to your own data directory containing!
+    e = NAS101Cifar10('../data')
+
     ori_task = 'ImageNet16-120'
     e.task = ori_task
-    X = random_sampling(400, 'nasbench101')[0]
-    X_s = random_sampling(400, 'nasbench101')[0]
+    X = random_sampling(300, 'nasbench101')[0]
+    X_s = random_sampling(1000, 'nasbench101')[0]
 
     y = torch.tensor([e.eval(x)[0] for x in X]).float()
     # This is not visible to the interpreter

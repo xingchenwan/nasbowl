@@ -13,6 +13,7 @@ def min_lp(x: torch.Tensor, y: torch.Tensor, p: int = -5):
     -------
 
     """
+    # An offset to avoid the singularity of autodiff at zero.
     return (x ** p + y ** p) ** (1. / p)
 
 
@@ -47,10 +48,15 @@ def calculate_kernel_matrix_as_tensor(X, Y=None, oa=False, se_kernel=None, norma
     """
 
     if Y is None:
+        # if oa:
+        #     K = torch.zeros(X.shape[0], X.shape[0])
+        #     for i in range(X.shape[0]):
+        #         for j in range(i, X.shape[0]):
+        #             # K[i, j] = torch.sum(torch.min(X[i, :], X[j, :]))
+        #             K[i, j] = torch.sum(min_lp(X[i, :], X[j, :]))
+        #             K[j, i] = K[i, j]
         if se_kernel is not None:
             K = se_kernel.forward(X, X)
-        # elif oa:
-        #     K = min_lp(X, X)
         else:
             K = X @ X.t()
         if normalize:
@@ -59,14 +65,19 @@ def calculate_kernel_matrix_as_tensor(X, Y=None, oa=False, se_kernel=None, norma
             return K / K_diag_outer
     else:
         assert Y.shape[1] == X.shape[1], 'got Y shape ' + str(Y.shape[1]) + " but X shape " + str(X.shape[1])
-
+        # if oa:
+        #     K = torch.zeros(Y.shape[0], X.shape[0])
+        #     for i in range(Y.shape[0]):
+        #         for j in range(X.shape[0]):
+        #             # K[i, j] = torch.sum(torch.min(X[j, :], Y[i, :]))
+        #             K[i, j] = torch.sum(min_lp(X[j, :], Y[i, :]))
         if se_kernel is not None:
             K = se_kernel.forward(X, Y)
-        # elif oa:
-        #     K = min_lp(X, Y)
         else:
             K = Y @ X.t()
         if normalize:
+            # Ugly code here -> this apparently involves computing kernel 2x times just to obtain the diagonal entries.
+            # todo: change this, if speed matters. Xingchen 4 May
             Kxx = calculate_kernel_matrix_as_tensor(X, X, oa=oa, se_kernel=se_kernel, normalize=False)
             Kyy = calculate_kernel_matrix_as_tensor(Y, Y, oa=oa, se_kernel=se_kernel, normalize=False)
             K_diag_outer = torch.ger(torch.sqrt(torch.diag(Kyy)), torch.sqrt(torch.diag(Kxx)))

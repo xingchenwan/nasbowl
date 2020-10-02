@@ -1,22 +1,25 @@
 """The weisfeiler lehman kernel :cite:`shervashidze2011weisfeiler`."""
-# This code is extensively modified by  us
 
 import collections
-import logging
 import warnings
-from collections import OrderedDict
-from copy import deepcopy
 
 import numpy as np
-import torch
-from grakel.graph import Graph
-from grakel.kernels import Kernel
-from six import iteritems
-from six import itervalues
+
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from grakel_replace import VertexHistogram
+from grakel.graph import Graph
+from grakel.kernels import Kernel
+from grakel_replace import VertexHistogram, EdgeHistogram
+
+# Python 2/3 cross-compatibility import
+from six import iteritems
+from six import itervalues
+import logging
+from copy import deepcopy
+
+from collections import OrderedDict
+import torch
 
 
 class WeisfeilerLehman(Kernel):
@@ -120,7 +123,7 @@ class WeisfeilerLehman(Kernel):
 
         if not self._initialized["h"]:
             if type(self.h) is not int or self.h < 0:
-                raise TypeError("'h' must be a non-negative integer")
+                raise TypeError("'h' must be a non-negative integer. Got h" + str(self.h))
             self._h = self.h + 1
             self._initialized["h"] = True
 
@@ -168,6 +171,7 @@ class WeisfeilerLehman(Kernel):
             raise ValueError('method call must be called either from fit ' +
                              'or fit-transform')
         elif hasattr(self, '_X_diag'):
+            # Clean _X_diag value
             delattr(self, '_X_diag')
 
         # Input validation and parsing
@@ -284,14 +288,11 @@ class WeisfeilerLehman(Kernel):
                     new_graphs.append((Gs_ed[j], new_labels) + extras[j])
                 self._inv_labels[i] = WL_labels_inverse
                 # Compute the translated inverse node label
-                self._label_node_attr[i], self._inv_label_node_attr[i] = self.translate_label(WL_labels_inverse, i,
-                                                                                              self._label_node_attr[
-                                                                                                  i - 1])
+                self._label_node_attr[i], self._inv_label_node_attr[i] = self.translate_label(WL_labels_inverse, i, self._label_node_attr[i - 1])
                 self.feature_dims.append(self.feature_dims[-1] + len(self._label_node_attr[i]))
                 # Compute the feature weight of the current layer
                 if self.node_weights is not None:
-                    self._feature_weight[i] = self._compute_feature_weight(self.node_weights, i,
-                                                                           self._inv_label_node_attr[i])[1]
+                    self._feature_weight[i] = self._compute_feature_weight(self.node_weights, i, self._inv_label_node_attr[i])[1]
                 # assert len(self._feature_weight[i] == len(WL_labels_inverse))
                 yield new_graphs
 
