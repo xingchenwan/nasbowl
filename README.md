@@ -14,7 +14,9 @@ files under ```data/``` path. We expect these files:
     and install the relevant NAS-Bench-101 and NAS-Bench-201 APIs.
     
     (N.B. Small RAM machine sometimes have memory issue with this version of NAS-Bench-201. If this is a problem,
-    either switch to large RAM machine or use an earlier version of NAS-Bench-201 (v1.0).)
+    either switch to large RAM machine or use an earlier version of NAS-Bench-201 (v1.0). If you opt to use the earlier version,
+    you have to go to ```./benchmarks/nas201.py``` to change the file name expected, and install the relevant NAS-Bench-201
+    API, if necessary.)
 
 2. Install the prerequisite packages via ```pip``` or ```conda```. We used Anaconda Python 3.7 for our experiments.
 ```bash
