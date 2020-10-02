@@ -15,7 +15,7 @@ files under ```data/``` path. We expect these files:
     
     (N.B. Small RAM machine sometimes have memory issue with this version of NAS-Bench-201. If this is a problem,
     either switch to large RAM machine or use an earlier version of NAS-Bench-201 (v1.0). If you opt to use the earlier version,
-    you have to go to ```./benchmarks/nas201.py``` to change the file name expected, and install the relevant NAS-Bench-201
+    you have to go to ```./benchmarks/nas201.py``` to change the file name expected, and install a matching version of the NAS-Bench-201
     API, if necessary.)
 
 2. Install the prerequisite packages via ```pip``` or ```conda```. We used Anaconda Python 3.7 for our experiments.
@@ -59,6 +59,11 @@ To reproduce the experiments in the paper, see below
     ```
     Again, append ```--fixed_query_seed 3``` for deterministic objective function. Append ```--task cifar100```
     for CIFAR-100 dataset, and similarly ```--task ImageNet16-120``` for ImageNet16 dataset.
+    
+    For transfer learning results on NAS-Bench-201, run
+    ```
+    python3 -u transfer_nasbench201.py 
+    ```
       
 3. To reproduce regression examples on NAS-Bench, use
     ```bash
@@ -70,16 +75,12 @@ To reproduce the experiments in the paper, see below
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task cifar100
     python3 -u nas_regression.py --n_repeat 20 --n_train 50 --n_test 400 --dataset nasbench201 --task ImageNet16-120
     ```
-    For transfer learning results on NAS-Bench-201, run
-    ```
-    python3 -u transfer_nasbench201.py 
-    ```
-
+   
 4. To run open-domain search on DARTS search space (currently only single-GPU is supported):
     ```bash
     python3 -u run_darts.py --cutout --auxiliary --search_space darts
     ```
-   Note that due to the high stochasticity on the CIFAR-10 task, you might get the exact same cell from the paper. The code
+   Note that due to the high stochasticity on the CIFAR-10 task, you might not get the exactly same cell from the paper. The code
    above will take approximate 3 days to finish on a single modern GPU. 
    
    This code does not include the evaluation part of the final architecture. However, given the Genotypes returned, 
