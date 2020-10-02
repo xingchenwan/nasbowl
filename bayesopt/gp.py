@@ -3,6 +3,7 @@ import logging
 from copy import deepcopy
 
 import networkx as nx
+import gpytorch
 
 from kernels import GraphKernels, Stationary
 from kernels import SumKernel
