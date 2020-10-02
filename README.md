@@ -80,7 +80,10 @@ To reproduce the experiments in the paper, see below
     python3 -u run_darts.py --cutout --auxiliary --search_space darts
     ```
    Note that due to the high stochasticity on the CIFAR-10 task, you might get the exact same cell from the paper. The code
-   above will take approximate 3 days to finish on a single modern GPU.
+   above will take approximate 3 days to finish on a single modern GPU. 
+   
+   This code does not include the evaluation part of the final architecture. However, given the Genotypes returned, 
+   you may easily run evaluation using the codes in DARTS repository. See [https://github.com/quark0/darts] for scripts and instructions.
    
 5. To reproduce interpretability results (e.g. motifs), we have attached a sample code snippet
 in ```./bayesopt/interpreter.py``` (running this file directly will run the code in ```__main__```).
