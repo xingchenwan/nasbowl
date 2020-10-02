@@ -32,8 +32,8 @@ parser.add_argument('--pool_size', type=int, default=100, help='number of candid
 parser.add_argument('--mutate_size', type=int, help='number of mutation candidates. Only applicable for mutate'
                                                     'or grad_mutate. By default, half of the pool_size is generated'
                                                     'from mutation.')
-parser.add_argument('--pool_strategy', default='grad_mutate', help='the pool generation strategy. Options: random,'
-                                                              ' regularised evolutionary, random graph generation')
+parser.add_argument('--pool_strategy', default='mutate', help='the pool generation strategy. Options: random,'
+                                                              'mutate')
 parser.add_argument('--save_path', default='results/', help='path to save log file')
 parser.add_argument('-s', '--strategy', default='gbo', help='optimisation strategy: option: gbo (graph bo), '
                                                             'random (random search)')
@@ -58,9 +58,9 @@ parser.add_argument('--load_from_cache', action='store_true', help='Whether to l
 parser.add_argument('--use_node_weight', action='store_true', help='Whether to use different node weights. Experimental'
                                                                    'feature')
 parser.add_argument('--mutate_unpruned_archs', action='store_true',
-                    help='Whether to mutate on the unpruned archs. This option is only valid if mutate or grad_mutate '
+                    help='Whether to mutate on the unpruned archs. This option is only valid if mutate '
                          'is specified as the pool_strategy')
-parser.add_argument('--no_isomorphism', action='store_true', help='Whether to allow mutation/grad_mutation to return'
+parser.add_argument('--no_isomorphism', action='store_true', help='Whether to allow mutation to return'
                                                                   'isomorphic architectures')
 parser.add_argument('--maximum_noise', default=0.01, type=float, help='The maximum amount of GP jitter noise variance')
 args = parser.parse_args()
@@ -78,7 +78,7 @@ else:
     device = 'cpu'
 
 assert args.strategy in ['random', 'gbo']
-assert args.pool_strategy in ['random', 'mutate', 'grad_mutate']
+assert args.pool_strategy in ['random', 'mutate', ]
 
 # Initialise the objective function. Negative ensures a maximisation task that is assumed by the acquisition function.
 
@@ -107,7 +107,7 @@ if o is None:
     else:
         raise NotImplementedError("Required dataset " + args.dataset + " is not implemented!")
 
-# init_data_list = []
+all_data = []
 for j in range(args.n_repeat):
     start_time = time.time()
     best_tests = []
@@ -124,8 +124,6 @@ for j in range(args.n_repeat):
     # Initialise the GP surrogate and the acquisition function
     pool = x[:]
     unpruned_pool = x_unpruned[:]
-    #
-    # pool, unpruned_pool = [], []
     kern = []
 
     node_weights = None
@@ -134,13 +132,11 @@ for j in range(args.n_repeat):
         # Graph kernels
         if k == 'wl':
             k = WeisfilerLehman(h=2,  oa=args.dataset != 'nasbench201',
-                                node_weights=node_weights, requires_grad=args.pool_strategy == 'grad_mutate', )
+                                node_weights=node_weights,)
         elif k == 'mlk':
             k = MultiscaleLaplacian(n=1)
         elif k == 'vh':
-            k = WeisfilerLehman(h=0, node_weights=node_weights, oa=args.dataset != 'nasbench201',
-                                requires_grad=args.pool_strategy == 'grad_mutate',
-                                )
+            k = WeisfilerLehman(h=0, node_weights=node_weights, oa=args.dataset != 'nasbench201',)
         else:
             try:
                 k = getattr(kernels, k)
@@ -177,18 +173,6 @@ for j in range(args.n_repeat):
                                            n_mutate=args.mutate_size if args.mutate_size else args.pool_size // 2,
                                            observed_archs_unpruned=x_unpruned if args.mutate_unpruned_archs else None,
                                            allow_isomorphism=not args.no_isomorphism)
-        elif args.pool_strategy == 'grad_mutate':
-            index_of_wl = [kern.index(k) for k in kern if isinstance(k, WeisfilerLehman)]
-            assert len(index_of_wl) == 1, " If using grad_mutate, need to have exactly one WeisfeilerLehman kernel in" \
-                                          "the list of kernels!"
-            wl = kern[index_of_wl[0]]
-            pool, unpruned_pool = grad_guided_mutation(x, y, wl, gp, n_best=10,
-                                                       n_mutate=args.mutate_size if args.mutate_size else args.pool_size // 2,
-                                                       pool_size=args.pool_size,
-                                                       benchmark=args.dataset,
-                                                       observed_archs_unpruned=x_unpruned if args.mutate_unpruned_archs
-                                                       else None,
-                                                       allow_isomorphism=not args.no_isomorphism)
         else:
             pass
 
@@ -223,13 +207,13 @@ for j in range(args.n_repeat):
         # returned by the Bayesian optimiser proposal)
         pool_vals = [o.eval(x_)[0] for x_ in pool]
         if gp is not None:
-            pool_preds = gp.predict(pool, preserve_comp_graph=args.pool_strategy == 'grad_mutate')
+            pool_preds = gp.predict(pool,)
             pool_preds = [p.detach().cpu().numpy() for p in pool_preds]
             pool.extend(next_x)
 
         # Update the GP Surrogate
         x.extend(next_x)
-        if args.pool_strategy in ['mutate', 'grad_mutate']:
+        if args.pool_strategy in ['mutate']:
             x_unpruned.extend(next_x_unpruned)
         y = torch.cat((y, torch.tensor(next_y).view(-1)))
         test = torch.cat((test, torch.tensor(next_test).view(-1)))
@@ -242,7 +226,7 @@ for j in range(args.n_repeat):
                    )
 
             # Compute the GP posterior distribution on the trainning inputs
-            train_preds = gp.predict(x, preserve_comp_graph=args.pool_strategy == 'grad_mutate')
+            train_preds = gp.predict(x,)
             train_preds = [t.detach().cpu().numpy() for t in train_preds]
 
         zipped_ranked = list(sorted(zip(pool_vals, pool), key=lambda x: x[0]))[::-1]
@@ -299,7 +283,6 @@ for j in range(args.n_repeat):
 
             if args.verbose:
                 from perf_metrics import *
-
                 print('Spearman: ', spearman(pool_vals, pool_preds[0]))
             plt.subplot(224)
             # Best metrics so far
@@ -310,26 +293,15 @@ for j in range(args.n_repeat):
             plt.show()
 
         res.iloc[i, :] = values
+    all_data.append(res)
 
-    if args.save_path is not None:
-        kernels_str = ",".join(args.kernels)
-        save_path = args.save_path + args.dataset + "/"
-        if args.dataset == 'nasbench201':
-            save_path += str(args.task) + "/"
-        save_path += args.strategy + '_Pool' + str(args.pool_size) + \
-                     '_Batch' + str(args.batch_size) + '_Kernel' + kernels_str + "/"
-        if args.strategy != 'random':
-            save_path += "_Acq" + args.acquisition + "_PoolStrategy" + args.pool_strategy + "_ninit" + str(args.n_init)
-        if args.mutate_unpruned_archs and args.pool_strategy in ['mutate', 'grad_mutate']:
-            save_path += '_unpruned_mutate'
-        if args.fixed_query_seed is not None:
-            save_path += '_queryseed' + str(args.fixed_query_seed)
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        res.to_csv(save_path + '/Iter_' + str(j) + random_generator() + ".csv")
-        # Save the args to a txt file
-        option_file = open(save_path + "/command.txt", "w+")
-        option_file.write(str(options))
-        option_file.close()
-    if args.seed is not None:
-        args.seed += 1024
+if args.save_path is not None:
+    import datetime
+    time_string = datetime.datetime.now()
+    time_string = time_string.strftime('%Y%m%d_%H%M%S')
+    args.save_path = os.path.join(args.save_path, time_string)
+    if not os.path.exists(args.save_path): os.makedirs(args.save_path)
+    pickle.dump(all_data, open(args.save_path + '/data.pickle', 'wb'))
+    option_file = open(args.save_path + "/command.txt", "w+")
+    option_file.write(str(options))
+    option_file.close()
