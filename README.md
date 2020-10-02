@@ -90,7 +90,7 @@ To reproduce the experiments in the paper, see below
 in ```./bayesopt/interpreter.py``` (running this file directly will run the code in ```__main__```).
 
 ## References
-We used materials from the following public public repositories. We would like to express our gratitude towards
+We used materials from the following public code repositories. We would like to express our gratitude towards
 these authors/codebase maintainers
     
    1. Ying, Chris, et al. "Nas-bench-101: Towards reproducible neural architecture search." 
