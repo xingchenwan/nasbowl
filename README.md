@@ -13,8 +13,8 @@ files under ```data/``` path. We expect these files:
     
     and install the relevant NAS-Bench-101 and NAS-Bench-201 APIs.
     
-    (N.B. Small RAM machine sometimes have memory issue with this version of NAS-Bench-201. If this is a problem,
-    either switch to large RAM machine or use an earlier version of NAS-Bench-201 (v1.0). If you opt to use the earlier version,
+    (N.B. Small RAM machine sometimes has memory issue with this version of NAS-Bench-201. If this is a problem,
+    either switch to a large RAM machine or use an earlier version of NAS-Bench-201 (v1.0). If you opt to use the earlier version,
     you have to go to ```./benchmarks/nas201.py``` to change the file name expected, and install a matching version of the NAS-Bench-201
     API, if necessary.)
 
@@ -81,7 +81,7 @@ To reproduce the experiments in the paper, see below
     python3 -u run_darts.py --cutout --auxiliary --search_space darts
     ```
    Note that due to the high stochasticity on the CIFAR-10 task, you might not get the exactly same cell from the paper. The code
-   above will take approximate 3 days to finish on a single modern GPU. 
+   above will take approximately 3 days to finish on a single modern GPU. 
    
    This code does not include the evaluation part of the final architecture. However, given the Genotypes returned, 
    you may easily run evaluation using the codes in DARTS repository. See [https://github.com/quark0/darts] for scripts and instructions.
@@ -101,5 +101,6 @@ these authors/codebase maintainers
    arXiv preprint arXiv:1806.09055 (2018). [https://github.com/quark0/darts]
    4. Dong, Xuanyi, and Yi Yang. "Nas-bench-201: Extending the scope of reproducible neural architecture search." 
    International Conference on Learning Representations (2020). [https://github.com/D-X-Y/NAS-Bench-201]
-
+   5. Siglidis, Giannis, et al. "GraKeL: A Graph Kernel Library in Python." Journal of Machine Learning Research 21.54 (2020): 1-5.
+    [https://github.com/ysig/GraKeL]
 
