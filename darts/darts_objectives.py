@@ -1,13 +1,12 @@
 # This file provides the conversion between of our API the DARTS interface
-from benchmarks.objectives import ObjectiveFunction
-import numpy as np
-from darts.cnn.genotypes import Genotype
-import networkx as nx
-from darts.utils import *
-from darts.arch_trainer import DARTSTrainer
-import torch
-from torch.multiprocessing import Pool, Process
 import logging
+
+import torch
+from torch.multiprocessing import Pool
+
+from benchmarks.objectives import ObjectiveFunction
+from darts.arch_trainer import DARTSTrainer
+from darts.utils import *
 
 INPUT_1 = 'c_k-2'
 INPUT_2 = 'c_k-1'
@@ -25,13 +24,13 @@ def get_ops(search_space):
                 ], 4
     elif search_space == 'nasnet':
         return [
-            'max_pool_3x3',
-            'max_pool_5x5',
-            'sep_conv_3x3',
-            'sep_conv_5x5',
-            'sep_conv_7x7',
-            'skip_connect',
-        ], 7
+                   'max_pool_3x3',
+                   'max_pool_5x5',
+                   'sep_conv_3x3',
+                   'sep_conv_5x5',
+                   'sep_conv_7x7',
+                   'skip_connect',
+               ], 7
 
 
 class DARTSObjective(ObjectiveFunction):
@@ -92,28 +91,13 @@ class DARTSObjective(ObjectiveFunction):
                     res.append(1. - result[0] / 100.)  # Turn into error
                     diag_stats.append(result[1])
                 except Exception as e:
-                    logging.error("An error occured in the current architecture. Assigning nan to the arch. The error is:")
+                    logging.error(
+                        "An error occured in the current architecture. Assigning nan to the arch. The error is:")
                     logging.error(e)
                     res.append(np.nan)
                     diag_stats.append(None)
 
-            # Debugging on a single GPU machine
-            # num_reps = ceil(len(X) / 2.)
-            # for i in range(num_reps):
-            #     x = X[i * 2: min((i + 1) * 2, len(X))]  # select the number of parallel archs to evaluate
-            #     selected_gpus = [0] * len(x)
-            #     other_arg = [self.data_path, self.save_path, self.dataset, self.cutout, self.epochs, ]
-            #     args = list(map(list, zip(x, selected_gpus,), ))
-            #     args = [a + other_arg for a in args]
-            #
-            #     pool = Pool(processes=len(x))
-            #     current_res = pool.starmap(parallel_eval, args)
-            #     pool.close()
-            #     pool.join()
-            #     res.extend(current_res)
-            #     print(res)
         else:
-            # todo :implement diagstats for multithreading
             gpu_ids = range(n_parallel)
             num_reps = ceil(len(X) / float(n_parallel))
             for i in range(num_reps):
@@ -159,7 +143,6 @@ class DARTSObjective(ObjectiveFunction):
 
 
 def parallel_eval(*args):
-    #todo: need fixing. now retrieve return two things
     """The function to be used for parallelism"""
     genotype, gpuid, data_path, save_path, dataset, cutout, epochs, policy = args
     print(args)
@@ -180,7 +163,6 @@ def random_sample_darts(n, search_space, same_arch=True, n_tower=4):
     """
     if not same_arch:
         raise NotImplementedError
-    # todo
 
     """Generate a list of 2 tuples, consisting of the random DARTS Genotype and DiGraph"""
     OPS, n_tower = get_ops(search_space)
@@ -263,10 +245,9 @@ def _mutate(arch: Genotype, search_space, edits, mutate_main_only=True) -> (nx.D
     return mutated_digraph, mutated_genotype
 
 
-def mutation_darts(n, search_space, parents, edits, same_arch=True, n_rand=None,):
+def mutation_darts(n, search_space, parents, edits, same_arch=True, n_rand=None, ):
     if not same_arch:
         raise NotImplementedError
-        # todo
     res = []
     if n_rand is None:
         n_rand = n
@@ -277,7 +258,7 @@ def mutation_darts(n, search_space, parents, edits, same_arch=True, n_rand=None,
         # Mutate the parent
         (child_arch_main, _), child_genotype = _mutate(parent_arch, search_space, edits, same_arch)
         while not is_valid_darts(child_genotype):
-            (child_arch_main, _), child_genotype = _mutate(parent_arch,  search_space, edits, same_arch)
+            (child_arch_main, _), child_genotype = _mutate(parent_arch, search_space, edits, same_arch)
         res.append((child_arch_main, child_genotype))
     if n_rand > 0:
         rand_archs = random_sample_darts(n_rand, search_space, same_arch=same_arch, )

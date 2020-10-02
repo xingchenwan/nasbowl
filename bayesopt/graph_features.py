@@ -1,5 +1,6 @@
 import networkx as nx
 
+
 class FeatureExtractor:
     """
     Extracting some hand-crafted x1_features for the x1_graphs
@@ -94,7 +95,7 @@ class FeatureExtractor:
         return deg, cnt
 
     @property
-    def laplacian_spectrum(self,):
+    def laplacian_spectrum(self, ):
         return nx.normalized_laplacian_spectrum(self.undirected_g)
 
     @property

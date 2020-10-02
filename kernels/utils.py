@@ -147,21 +147,6 @@ def get_dataset_attributes(Gn,
                 if len(list(nx.find_cycle(G))) > 0:
                     subs.add('cyclic')
                     break
-        # else:
-        #     # @todo: this method does not work for big graph with large amount of edges like D&D, try a better way.
-        #     upper = np.amin([nx.number_of_edges(G) for G in Gn]) * 2 + 10
-        #     for G in Gn:
-        #         if (nx.number_of_edges(G) < upper):
-        #             cyc = list(nx.simple_cycles(G.to_directed()))
-        #             if any(len(i) > 2 for i in cyc):
-        #                 subs.add('cyclic')
-        #                 break
-        #     if 'cyclic' not in subs:
-        #         for G in Gn:
-        #             cyc = list(nx.simple_cycles(G.to_directed()))
-        #             if any(len(i) > 2 for i in cyc):
-        #                 subs.add('cyclic')
-        #                 break
 
         return subs
 

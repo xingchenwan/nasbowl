@@ -172,7 +172,6 @@ class NAS101Cifar10(ObjectiveFunction):
 
     def eval(self, G, budget=108, n_repeat=1, use_banana=False):
         """
-        todo: use_bananas has not been updated to return the training details in addition to the validation/test acc.
         """
         # input is a list of graphs [G1,G2, ....]
         if use_banana:

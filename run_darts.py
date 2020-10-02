@@ -47,7 +47,6 @@ def main():
     assert args.eval_policy in ['best', 'last', 'last5']
     if args.dataset == 'imagenet':
         raise NotImplementedError
-        # todo
     assert args.search_space in ['darts', 'nasnet']
     if args.search_space == 'darts':
         n_towers = 4
@@ -80,7 +79,6 @@ def main():
         x = [_[0] for _ in xs]
         x_genotypes = [_[1] for _ in xs]
         y, y_stats = o.eval(x_genotypes) if not dummy_val else o.eval(x)
-        # Prune out the invalid indices
         valid_idx = [k for k, v in enumerate(y) if v == v]
         y = [y[i] for i in range(len(y)) if i in valid_idx]
         x = [x[i] for i in range(len(x)) if i in valid_idx]
@@ -143,7 +141,6 @@ def main():
                                    args.n_mutation_edits, True, n_rand=args.pool_size, )
         else:
             raise NotImplementedError
-            # todo: update for the gradmutate script
         genotype = [p[1] for p in pools]
         pool = [p[0] for p in pools]
         a = bayesopt.GraphExpectedImprovement(gp)
@@ -183,7 +180,6 @@ def main():
         save_path = args.save_path + random_generator() + "/"
         if prev_best_idx != best_index:
             print('New best arch found!')
-            # pickle.dump(x_genotypes[best_index], open(args.save_path + "/nasbowlr_iter50.pickle", 'wb'))
 
         if args.draw_arch:
             from misc.draw_nx import draw_graph
@@ -191,7 +187,6 @@ def main():
             filename = save_path + "/arch_draws/"
             if not os.path.exists(filename):
                 os.makedirs(filename)
-            # plot(graph2darts(x[best_index]).normal, filename=filename+'iteration'+str(i))
             if prev_best_idx != best_index:
                 draw_graph(x[best_index])
         prev_best_idx = best_index

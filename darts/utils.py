@@ -1,18 +1,21 @@
 # Utils.py for the conversion of DARTS Genotype and DAGs used in our interface
 
-from darts.cnn.genotypes import *
-import networkx as nx
 from copy import deepcopy
+
+import networkx as nx
 import numpy as np
+
+from darts.cnn.genotypes import *
 
 
 def darts2graph(genotype: Genotype,
                 return_reduction=True,
-                remove_skip=True,) -> (nx.DiGraph, nx.DiGraph):
+                remove_skip=True, ) -> (nx.DiGraph, nx.DiGraph):
     """
     Convert a DARTS-style genotype representation of an edge-attributed DAG to a canonical form DAG in our interface.
     Returns: a tuple of two canonical form DAGs (normal and reduction cells)
     """
+
     def _cell2graph(cell, concat):
         G = nx.DiGraph()
         n_nodes = (len(cell) // 2) * 3 + 3
@@ -49,7 +52,8 @@ def darts2graph(genotype: Genotype,
         # If remove the skip link nodes, do another sweep of the graph
         if remove_skip:
             for j in range(n_nodes):
-                try: G.nodes[j]
+                try:
+                    G.nodes[j]
                 except KeyError:
                     continue
                 if G.nodes[j]['op_name'] == 'skip_connect':
@@ -61,7 +65,8 @@ def darts2graph(genotype: Genotype,
                 elif G.nodes[j]['op_name'] == 'none':
                     G.remove_node(j)
             for j in range(n_nodes):
-                try: G.nodes[j]
+                try:
+                    G.nodes[j]
                 except KeyError:
                     continue
 
@@ -73,7 +78,7 @@ def darts2graph(genotype: Genotype,
                     # excepting the output nodes, if the node has no outgoing edge, remove it
                     if len(list(G.out_edges(j))) == 0:
                         G.remove_node(j)
-                elif G.nodes[j]['op_name'] == 'add':   # If add has one incoming edge only, remove the node
+                elif G.nodes[j]['op_name'] == 'add':  # If add has one incoming edge only, remove the node
                     in_edges = list(G.in_edges(j))
                     out_edges = list(G.out_edges(j))
                     if len(in_edges) == 1 and len(out_edges) == 1:
@@ -81,6 +86,7 @@ def darts2graph(genotype: Genotype,
                         G.remove_node(j)
 
         return G
+
     G_normal = _cell2graph(genotype.normal, genotype.normal_concat)
     try:
         G_reduce = _cell2graph(genotype.reduce, genotype.reduce_concat)
@@ -97,6 +103,7 @@ def graph2darts(G_normal: nx.DiGraph, G_reduce: nx.DiGraph = None) -> Genotype:
     Convert a canonical form DAG of our interface to a corresponding DARTS Genotype.
     If the reduction cell is not supplied, then the normal cell DAG will be taken as the reduction cell too.
     """
+
     def _graph2cell(G):
         from math import floor
         normal = []
@@ -124,7 +131,7 @@ def graph2darts(G_normal: nx.DiGraph, G_reduce: nx.DiGraph = None) -> Genotype:
             if in_edge <= 1:
                 normal.append((op_name, in_edge))
             else:
-                normal.append((op_name, in_edge//3+1))
+                normal.append((op_name, in_edge // 3 + 1))
         output_edges = [i[0] for i in list(G.in_edges(n_nodes))]
         normal_concat = [2 + floor((i - 4) / 3) for i in output_edges]
         return normal, normal_concat
@@ -150,7 +157,7 @@ if __name__ == '__main__':
     # Try converting back and forth between the Genotypes and the networkx graphs
     # Note that a failed assertion does not necessarily mean a bug, because when 'None' connection is involved, we
     # simply wire the in-edge to the first input, as there is no information flow anyway.
-    from darts.darts_objectives import random_sample_darts
+
     assert DARTS_V1 == graph2darts(*darts2graph(DARTS_V1, True))
     assert DARTS_V2 == graph2darts(*darts2graph(DARTS_V2, True))
     assert AmoebaNet == graph2darts(*darts2graph(AmoebaNet, True))

@@ -3,27 +3,22 @@
 from __future__ import print_function
 
 import collections
-import warnings
-import numpy as np
 import time
-
-from numbers import Real
+import warnings
 from math import exp
+from numbers import Real
 
-from sklearn.utils import check_random_state
-
+import numpy as np
+from grakel.graph import Graph
+from grakel.kernels import Kernel
 from numpy.linalg import eig
+from numpy.linalg import eigvals
 from numpy.linalg import inv
 from numpy.linalg import multi_dot
-from numpy.linalg import eigvals
-
-from grakel.graph import Graph
 from scipy.sparse.csgraph import laplacian
-
-from grakel.kernels import Kernel
-
 # Python 2/3 cross-compatibility import
 from six import iteritems
+from sklearn.utils import check_random_state
 
 positive_eigenvalue_limit = float("+1e-6")
 
@@ -167,7 +162,7 @@ class MultiscaleLaplacianFast(Kernel):
                 if is_iter and len(x) in [0, 2, 3]:
                     if len(x) == 0:
                         warnings.warn('Ignoring empty element ' +
-                                      'on index: '+str(idx))
+                                      'on index: ' + str(idx))
                         continue
                     else:
                         x = Graph(x[0], x[1], {}, self._graph_format)
@@ -238,7 +233,7 @@ class MultiscaleLaplacianFast(Kernel):
                     # (n_samples, k) * (k, P)
                     data[j][1] = data[j][1].dot(ksi)
                 self._data_level = {0: ksi}
-                for l in range(1, self.L+1):
+                for l in range(1, self.L + 1):
                     # Take random samples from all the vertices of all graphs
                     self.random_state_.shuffle(V)
                     vs = V[:ns]
@@ -252,9 +247,9 @@ class MultiscaleLaplacianFast(Kernel):
                         for (s, (k2, j2)) in enumerate(vs):
                             if s < m:
                                 K[s, m] = K[m, s] \
-                                        = K_proj[k2][j2, m] \
-                                        = K_proj[k][j, s] \
-                                        = self.pairwise_operation(C[s], C[m])
+                                    = K_proj[k2][j2, m] \
+                                    = K_proj[k][j, s] \
+                                    = self.pairwise_operation(C[s], C[m])
                             else:
                                 break
 
@@ -284,7 +279,7 @@ class MultiscaleLaplacianFast(Kernel):
                     # (n, k) * (k, P)
                     data[j][1] = data[j][1].dot(ksi)
 
-                for l in range(1, self.L+1):
+                for l in range(1, self.L + 1):
                     C, Q = self._data_level[l]
                     for j in range(ng):
                         K_proj = np.zeros(shape=(data[j][0].shape[0], len(C)))
@@ -322,7 +317,7 @@ class MultiscaleLaplacianFast(Kernel):
 
         # Calculate the result in term of logs
         log_detS = -np.sum(np.log(np.real(eigvals(S_inv_x + S_inv_y))))
-        logr = (log_detS - 0.5*(log_det_x + log_det_y))/2.0
+        logr = (log_detS - 0.5 * (log_det_x + log_det_y)) / 2.0
 
         if logr < -30:
             return .0
@@ -440,7 +435,7 @@ class MultiscaleLaplacian(Kernel):
                 if is_iter and len(x) in [0, 2, 3]:
                     if len(x) == 0:
                         warnings.warn('Ignoring empty element ' +
-                                      'on index: '+str(idx))
+                                      'on index: ' + str(idx))
                         continue
                     else:
                         x = Graph(x[0], x[1], {}, self._graph_format)
@@ -466,7 +461,7 @@ class MultiscaleLaplacian(Kernel):
                 L = inv(Lap)
 
                 Q = dict()
-                for level in range(1, self.L+1):
+                for level in range(1, self.L + 1):
                     Q[level] = dict()
                     for (key, item) in iteritems(N[level]):
                         Q[level][key] = dict()
@@ -517,7 +512,7 @@ class MultiscaleLaplacian(Kernel):
         # a lambda that calculates indexes inside the gram matrix
         # and the corresponindg laplacian given a node and a level
 
-        for level in range(1, self.L+1):
+        for level in range(1, self.L + 1):
             gram_matrix_n = np.empty(shape=gram_matrix.shape)
 
             for i in range(nx):
@@ -529,7 +524,7 @@ class MultiscaleLaplacian(Kernel):
                     idx_ij = np.append(qi["n"], qj["n"])
                     extracted_gm = gram_matrix[idx_ij, :][:, idx_ij]
 
-                    gram_matrix_n[i, j] =\
+                    gram_matrix_n[i, j] = \
                         self._generalized_FLG_core_(qi["l"], qj["l"], extracted_gm)
 
                 # xy
@@ -538,7 +533,7 @@ class MultiscaleLaplacian(Kernel):
                     idx_ij = np.append(qi["n"], qj["n"] + nx)
                     extracted_gm = gram_matrix[idx_ij, :][:, idx_ij]
 
-                    gram_matrix_n[i, j + nx] =\
+                    gram_matrix_n[i, j + nx] = \
                         self._generalized_FLG_core_(qi["l"], qj["l"], extracted_gm)
 
             for i in range(ny):
@@ -552,7 +547,7 @@ class MultiscaleLaplacian(Kernel):
                     idx_ij = np.append(qi_n, qj["n"])
                     extracted_gm = gram_matrix[idx_ij, :][:, idx_ij]
 
-                    gram_matrix_n[idx, j] =\
+                    gram_matrix_n[idx, j] = \
                         self._generalized_FLG_core_(qi["l"], qj["l"], extracted_gm)
 
                 # yy
@@ -561,7 +556,7 @@ class MultiscaleLaplacian(Kernel):
                     idx_ij = np.append(qi_n, qj["n"] + nx)
                     extracted_gm = gram_matrix[idx_ij, :][:, idx_ij]
 
-                    gram_matrix_n[idx, j + nx] =\
+                    gram_matrix_n[idx, j + nx] = \
                         self._generalized_FLG_core_(qi["l"], qj["l"], extracted_gm)
 
             gram_matrix = np.triu(gram_matrix) + np.triu(gram_matrix, 1).T
@@ -612,7 +607,7 @@ class MultiscaleLaplacian(Kernel):
 
             # Caclulate the kernel nominator
             log_detS = -sle(inv(Sx) + inv(Sy))
-            logr = (log_detS - 0.5*(sle(Sx) + sle(Sy)))/2.0
+            logr = (log_detS - 0.5 * (sle(Sx) + sle(Sy))) / 2.0
 
             if logr >= -30:
                 k = exp(logr)

@@ -4,18 +4,21 @@
 # the surrogate GP as prior to run optimisation on CIFAR-100 and ImageNet tasks.
 
 import argparse
-from benchmarks import NAS201
-from bayesopt.interpreter import Interpreter
-from kernels import WeisfilerLehman
-import torch
-import os, pickle
+import datetime
+import os
+import pickle
 import time
+
+import torch
+from tabulate import tabulate
+
+import bayesopt
 from bayesopt.generate_test_graphs import random_sampling, mutation
 from bayesopt.gp import GraphGP
-import bayesopt
-from tabulate import tabulate
+from bayesopt.interpreter import Interpreter
+from benchmarks import NAS201
+from kernels import WeisfilerLehman
 from misc.find_stuctures import find_wl_feature
-import datetime
 
 parser = argparse.ArgumentParser(description='Transfer Learning NAS-Bench-201')
 parser.add_argument('--base_task', default='cifar10-valid', help='the base task to first run optimisation on')
@@ -46,7 +49,6 @@ def filter_pool(pool, include_list, exclude_list, kernel, ):
         if exclude_list is None or not len(exclude_list):
             return pool
     pruned_pool = []
-    # First prune based on include list
 
     for p in pool:
         found = False
@@ -56,7 +58,7 @@ def filter_pool(pool, include_list, exclude_list, kernel, ):
                     found = True
                     break
             if not found: continue
-        if exclude_list is not None and not found:  # as long as an arch has good features, ignore whether it has bad ones.
+        if exclude_list is not None and not found:
             found = False
             for f in exclude_list:
                 if find_wl_feature(p, (f,), kernel):
@@ -72,7 +74,6 @@ def train(sampler, max_iters, include_feats=None, exclude_feats=None, base_kerne
     start_time = time.time()
     best_tests = []
     best_vals = []
-    # 2. Take n_init_point random samples from the candidate points to warm_start the Bayesian Optimisation
     x = []
     while len(x) < args.n_init:
         cand = random_sampling(args.n_init, benchmark='nasbench201', )[0]
@@ -150,25 +151,14 @@ for run in range(args.n_repeat):
     res = {'iterative': None, 'transfer1': None, 'transfer2': None}
     o.task = args.base_task
     print('-------- Starting Base Task Optimisation ----------')
-    # x = random_sampling(args.n_init, benchmark='nasbench201', )[0]
-    # y_np_list = [o.eval(x_) for x_ in x]
-    # y = torch.tensor([y[0] for y in y_np_list]).float()
-    # k = WeisfilerLehman(oa=False, h=1, requires_grad=True)
-    # base_gp = GraphGP(x, y, [k], )
-    # base_gp.fit(wl_subtree_candidates=())
-
     base_gp, base_kernel, base_val, bese_test = train(o, args.base_max_iters)
-    # res['base_task'] = [x, y.detach()]
     print('------------- Base Task Completed --------------')
     transfer_tasks = [t for t in tasks if t != args.base_task]
-    # transfer_tasks = [args.base_task] + transfer_tasks
     for i, t in enumerate(transfer_tasks):
         interpreter = Interpreter(gp=base_gp, thres=args.threshold)
         o.task = t
         include = [interpreter.feat_list[i] for i in interpreter.good_idx]
-        # exclude = [interpreter.feat_list[i] for i in interpreter.bad_idx]
         print('Preserving Motifs: ', include)
-        # print('Prohibited Motifs: ', exclude)
         _, _, tr_val, tr_test = train(o, args.transfer_max_iters, include, None, base_kernel)
         res['transfer' + str(i + 1)] = [tr_val, tr_test]
     all_res.append(res)

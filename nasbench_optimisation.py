@@ -1,16 +1,15 @@
 import argparse
+import os
 import pickle
-import time  # time module to randomise seed outside the fixed seed regimes
-
+import time
 import pandas as pd
 import tabulate
-import os
+
 import bayesopt
 import kernels
 from bayesopt.generate_test_graphs import *
 from benchmarks import NAS101Cifar10, NAS201
 from kernels import *
-from misc.random_string import random_generator
 
 parser = argparse.ArgumentParser(description='NAS-BOWL')
 parser.add_argument('--dataset', default='nasbench101', help='The benchmark dataset to run the experiments. '
@@ -229,7 +228,7 @@ for j in range(args.n_repeat):
         # Compute the cumulative training time.
         try:
             cum_train_time = np.sum([item['train_time'] for item in train_details]).item()
-        except TypeError:  # cause by np.nan if an older version of the NAS-Bench-201 dataset is used
+        except TypeError:
             cum_train_time = np.nan
         values = [str(i), str(np.exp(-np.max(next_y))), best_val.item(), true_best_pool, pool_regret,
                   str(np.exp(-np.max(next_test))), best_test.item(), str(end_time - start_time),

@@ -11,7 +11,6 @@ def find_2_structure(gr, att, encoding):
     """Applicable for the second-layer WL features (i.e. the nodes + their 1-neighbours).
     This is actually faulty. Do not use this line."""
     if "~" in encoding:
-        # Temporary fix
         encoding = encoding.split("~")
         encoding = [(e, ) for e in encoding]
     root_node = encoding[0][0]
@@ -36,7 +35,6 @@ def find_wl_feature(test, feature, kernel, ):
     if not isinstance(test, list): test = [test]
     test = graph_from_networkx(test, 'op_name', )
 
-    # feat_map = list(kernel.feature_map(flatten=True).values())
     feat_map = kernel.feature_map(flatten=False)
     len_feat_map = [len(f) for f in feat_map.values()]
     try:

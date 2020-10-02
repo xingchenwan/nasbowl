@@ -1,5 +1,3 @@
-# Custom (and minimalist) implementations of some of the common vectorial kernels
-# - this is done so that the back prop of gradients will not be affected
 
 import torch
 from math import sqrt

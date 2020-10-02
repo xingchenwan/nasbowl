@@ -1,17 +1,14 @@
-# Robin Ru | 5 March 2020
-# Modifed from nas_benchmarks
-
-import os
+import collections
+import copy
+import logging
+import random
+from copy import deepcopy
 
 import ConfigSpace
-import numpy as np
-from copy import deepcopy
-import collections
-import random
 import networkx as nx
-import copy
 import networkx.algorithms.isomorphism as iso
-import logging
+import numpy as np
+
 from kernels import GraphKernels, WeisfilerLehman
 from .gp import GraphGP
 
@@ -82,7 +79,6 @@ def prune(original_matrix, ops):
 
 
 def get_nas101_configuration_space():
-    # NAS-CIFAR10 A
     nas101_cs = ConfigSpace.ConfigurationSpace()
 
     nas101_cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("op_node_0", OPS))
@@ -243,8 +239,6 @@ def mutate_arch(parent_arch, benchmark, return_unpruned_arch=True):
                 mutation_failed = False
             except:
                 continue
-            # if pruned_adjacency_matrix.all() != parent_adjacency_matrix.all() or pruned_node_labeling != parent_node_labeling:
-            #
 
         child_arch = nx.from_numpy_array(pruned_adjacency_matrix, create_using=nx.DiGraph)
 
@@ -291,7 +285,7 @@ def sigmoid(x):
 def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpruned_arch=True,
                           unpruned_parent_arch=None,
                           change_grad_sign=True,
-                          like_bananas=True  ,
+                          like_bananas=True,
                           verbose=False):
     """
 
@@ -318,19 +312,13 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
     # combine feature_names, features_grad into one dic
     # the gradient w.r.t all features seen so far both test arch and observed arch
     all_features = {}
-    # for feature in feature_names.items():
-    #     idx, feature_name = feature
-    #     if change_grad_sign:
-    #         all_features[feature_name] = - features_grad[idx]
-    #     else:
-    #         all_features[feature_name] = features_grad[idx]
     for idx, feature_name in enumerate(feature_names):
         if change_grad_sign:
             features_grad_idx = - features_grad[idx]
         else:
             features_grad_idx = features_grad[idx]
 
-        if feature_name.count('~') <=1:
+        if feature_name.count('~') <= 1:
             all_features[feature_name] = features_grad_idx
 
         else:
@@ -347,7 +335,6 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
         else:
             op_grad_value = 0
         op_grad_list.append(op_grad_value)
-    # op_grad_list = [all_features[op] for op in op_list if op in feature_names]
 
     # define all possible edges in the parent graph and encode them as "in_node_op_name~out_node_op_name"
     edges_pool = [(ni, no) for ni in range(parent_arch.number_of_nodes() - 1) for no in
@@ -370,8 +357,6 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
         edge_key = edge_item[0]
         edge_encode_str = edge_item[1]
         edge_grads = [all_features[key] for key in list(all_features.keys()) if edge_encode_str in key]
-        # Change to edge_grads = [] so that the mutation probability of edge is not affected.
-        # edge_grads = []
         edge_grads_sum = np.sum(edge_grads)
         edge_prob_dic[edge_key] = edge_grads_sum
 
@@ -391,8 +376,7 @@ def guided_mutate_arch101(parent_arch, feature_names, features_grad, return_unpr
     node_edge_prob_list = list(node_prob_dic.values()) + list(edge_prob_dic.values())
 
     node_edge_prob_array = np.array(node_edge_prob_list)
-    normalised_node_edge_probs = np.exp(node_edge_prob_array) / np.sum(np.exp(node_edge_prob_array))
-    # normalised_node_edge_probs = sigmoid(node_edge_prob_array) / np.sum(sigmoid(node_edge_prob_array))
+    normalised_node_edge_probs = sigmoid(node_edge_prob_array) / np.sum(sigmoid(node_edge_prob_array))
 
     # start mutate
     if unpruned_parent_arch is not None:
@@ -511,12 +495,6 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
     # combine feature_names, features_grad into one dic
     # the gradient w.r.t all features seen so far both test arch and observed arch
     all_features = {}
-    # for feature in feature_names.items():
-    #     idx, feature_name = feature
-    #     if change_grad_sign:
-    #         all_features[feature_name] = - features_grad[idx]
-    #     else:
-    #         all_features[feature_name] = features_grad[idx]
 
     for idx, feature_name in enumerate(feature_names):
         if change_grad_sign:
@@ -524,7 +502,7 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
         else:
             features_grad_idx = features_grad[idx]
 
-        if feature_name.count('~') <=1:
+        if feature_name.count('~') <= 1:
             all_features[feature_name] = features_grad_idx
 
         else:
@@ -533,7 +511,6 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
                 all_features[f'{feature_name_list[0]}~{feature_name_list[idx2]}'] = features_grad_idx
 
     # find the grad for all the op choices
-    # OPS_201 = ['nor_conv_3x3', 'nor_conv_1x1', 'avg_pool_3x3', 'skip_connect', 'none']
     all_ops_grad_dic = {'nor_conv_3x3': [], 'nor_conv_1x1': [], 'avg_pool_3x3': [], 'skip_connect': [], 'none': []}
 
     # build unpruned nasbench201 graphs
@@ -561,14 +538,6 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
             # collect related feature names
             for n_i in input_nodes:
                 related_feature_names = [node_labelling[n_i] + '~' + node_labelling[n_o] for n_o in output_nodes]
-
-            # collect the grads for the related feature TODO check this line!
-            # feature_grad * z_feature_exist_in_graph = feature_relevant
-            # related_feature_grads = []
-            # for feature_name in related_feature_names:
-            #     feature_grad_list = [all_features[key] for key in list(all_features.keys()) if feature_name in key]
-            #     related_feature_grads += feature_grad_list
-            # feature_grad_sum = np.sum(related_feature_grads)
 
             related_feature_grads = 0
             if n == 'skip_connect':
@@ -605,8 +574,7 @@ def guided_mutate_arch201(parent_arch, feature_names, features_grad, return_unpr
     unpruned_node_prob_list = list(node_prob_dic.values())
 
     unpruned_node_prob_array = np.array(unpruned_node_prob_list)
-    # normalised_node_probs = sigmoid(unpruned_node_prob_array) / np.sum(sigmoid(unpruned_node_prob_array))
-    normalised_node_probs = np.exp(unpruned_node_prob_array) / np.sum(np.exp(unpruned_node_prob_array))
+    normalised_node_probs = sigmoid(unpruned_node_prob_array) / np.sum(sigmoid(unpruned_node_prob_array))
 
     # start mutate
     child_arch = deepcopy(G)
@@ -780,77 +748,6 @@ class Model(object):
         return '{0:b}'.format(self.arch)
 
 
-# def regularized_evolution2(observed_archs,
-#                            observed_errors, pool_size=100, cycles=5, sample_size=10,
-#                            observed_archs_unpruned=None,
-#                            benchmark='nasbench101'):
-#     """Algorithm for regularized evolution (i.e. aging evolution).
-#
-#     Follows "Algorithm 1" in Real et al. "Regularized Evolution for Image
-#     Classifier Architecture Search".
-#
-#     """
-#
-#     population = collections.deque()
-#     evaluation_pool = []  # A list of graphs whose acquisition function values to be evaluated
-#     evaluation_pool_unpruned = []  # Same as above, but unpruned architectures.
-#     # Fill the population with the observed archs (a list of labelled graphs) and validation error
-#     for i, archs in enumerate(observed_archs):
-#         model = Model()
-#         model.arch = archs
-#         model.unpruned_arch = observed_archs_unpruned[i]
-#         model.error = observed_errors[i]
-#         population.append(model)
-#     # Carry out evolution in cycles. Each cycle produces a model and removes another.
-#     k_cycle = 0
-#     # cycles = min(cycles, len(population))
-#     if cycles is None:
-#         cycles = len(population)
-#
-#     while k_cycle < cycles:
-#         sample = random.choices(population, k=sample_size)
-#
-#         # The parent is the best model in the sample.
-#         parent = max(sample, key=lambda i: i.error)
-#
-#         # skip 2-node archs
-#         if len(parent.arch.nodes) <= 3:
-#             continue
-#
-#         # Create the child model and store it.
-#         child = Model()
-#         child.arch, child.unpruned_arch = mutate_arch(parent.unpruned_arch if observed_archs_unpruned is not None
-#                                                       else parent.arch, benchmark=benchmark,
-#                                                       return_unpruned_arch=observed_archs_unpruned is not None)
-#         if np.sum(np.array(nx.adjacency_matrix(child.arch).todense())) > MAX_EDGES:
-#             continue
-#
-#         child.error = 0  # assign a fake and low error to child to prevent it being a parent
-#         population.append(child)
-#         # population_performance.append(0)
-#         # Remove the oldest model and move to next evolution cycle
-#         population.popleft()
-#         # population_performance = population_performance [1:] #Same as popleft
-#         k_cycle += 1
-#
-#     # Add the updated population to the evaluation pool
-#     for individual in population:
-#         evaluation_pool.append(individual.arch)
-#         evaluation_pool_unpruned.append(individual.unpruned_arch)
-#
-#     # Add some random archs into the evaluation pool
-#     nrandom_archs = max(pool_size - len(evaluation_pool), 0)
-#     if nrandom_archs:
-#         random_evaluation_pool, _, random_evaluation_pool_unpruned = random_sampling(pool_size=nrandom_archs,
-#                                                                                      benchmark=benchmark,
-#                                                                                      return_unpruned_archs=True)
-#         evaluation_pool += random_evaluation_pool
-#         evaluation_pool_unpruned += random_evaluation_pool_unpruned
-#     if observed_archs_unpruned is None:
-#         return evaluation_pool, None
-#     return evaluation_pool, evaluation_pool_unpruned
-
-
 def mutation(observed_archs, observed_errors,
              n_best=10,
              n_mutate=None,
@@ -932,8 +829,6 @@ def mutation(observed_archs, observed_errors,
         population.append(model)
 
     best_archs = [arch for arch in sorted(population, key=lambda i: -i.error)][:n_best]
-    # pools = [[] for _ in range(len(best_archs))]
-    # unpruned_pools = [[] for _ in range(len(best_archs))]
     evaluation_pool, evaluation_pool_unpruned = [], []
     per_arch = n_mutate // n_best
     for arch in best_archs:
@@ -971,16 +866,11 @@ def mutation(observed_archs, observed_errors,
                         continue
                 elif benchmark == 'nasbench101':
                     if iso.is_isomorphic(child.arch, arch.arch):
-                        # todo: for now we simply use the is_isomorphic function in networkx. However, it is possible
                         #  and desirable to simply do Weisfiler-Lehman Isomorphism test, since we are based on
                         #  Weisfeiler-Lehman graph kernel already and the isomorphism test is essentially free.
-                        #  (Xingchen, 26 Apr)
                         patience_ -= 1
                         continue
-                    # for prev_obs in observed_archs:
-                    #     if iso.is_isomorphic(child.arch, prev_obs):
-                    #         skip = True
-                    #         break
+
                     for prev_edit in evaluation_pool:
                         if iso.is_isomorphic(child.arch, prev_edit, ):
                             skip = True
@@ -993,8 +883,6 @@ def mutation(observed_archs, observed_errors,
             evaluation_pool.append(child.arch)
             evaluation_pool_unpruned.append(child.unpruned_arch)
             n_child += 1
-    # evaluation_pool = list(chain(*pools))
-    # evaluation_pool_unpruned = list(chain(*unpruned_pools))
 
     # Add some random archs into the evaluation pool, if either 1) patience is reached or 2)
     nrandom_archs = max(pool_size - len(evaluation_pool), 0)
@@ -1065,24 +953,17 @@ def grad_guided_mutation(observed_archs, observed_errors,
     per_arch = n_mutate // n_best
 
     for arch in best_archs:
-        # TODO NEED TO COMPUTE FEATURE_NAMES and FEATURE GRADS of ALL THE BEST/PARENT ARCHS
-        # grad, grad_var = GP.dmu_dphi([arch.arch], compute_grad_var=True)
-        # feature_names = GP.kernels[0].feature_map(True)
-        # grads = grad[0].numpy()
-        # feature_grads = grads[np.where(grads != 0)]
 
         n_child = 0
         patience_ = patience
         while n_child < per_arch and patience_ > 0:
             child = Model()
-            # child.arch, child.unpruned_arch = _banana_mutate(arch.unpruned_arch if observed_archs_unpruned is not None
-            #                                                  else arch.arch, benchmark=benchmark, )
 
             # Compute the gradient of the GP posterior, at the best locations.
             feature_names = kern.feature_map(flatten=True)
             grads, grad_var, feature_incidence = gp.dmu_dphi([arch.arch], False, False)
             grads = grads[0][0].numpy()
-            feature_grads = grads[np.where(grads != 0)]  # todo: fix this
+            feature_grads = grads[np.where(grads != 0)]
             feature_incidence = feature_incidence.detach().numpy().flatten()[np.where(grads != 0)]
             features_in_this_arch = np.where(feature_incidence != 0)
             feature_grads_in_this_arch = feature_grads[features_in_this_arch]
@@ -1091,20 +972,25 @@ def grad_guided_mutation(observed_archs, observed_errors,
             if benchmark == 'nasbench101':
 
                 if observed_archs_unpruned is not None:
-                    child.arch, child.unpruned_arch = guided_mutate_arch101(arch.arch, feature_names_in_this_arch, feature_grads_in_this_arch,
+                    child.arch, child.unpruned_arch = guided_mutate_arch101(arch.arch, feature_names_in_this_arch,
+                                                                            feature_grads_in_this_arch,
                                                                             return_unpruned_arch=True,
                                                                             change_grad_sign=True,
                                                                             unpruned_parent_arch=arch.unpruned_arch)
                 else:
-                    child.arch, child.unpruned_arch = guided_mutate_arch101(arch.arch, feature_names_in_this_arch, feature_grads_in_this_arch,
+                    child.arch, child.unpruned_arch = guided_mutate_arch101(arch.arch, feature_names_in_this_arch,
+                                                                            feature_grads_in_this_arch,
                                                                             return_unpruned_arch=False,
                                                                             change_grad_sign=True, )
 
             elif benchmark == 'nasbench201':
                 # for nasbench201 the pruned arch contains unpruned operation list in its name
-                child.arch, child.unpruned_arch = guided_mutate_arch201(arch.arch, feature_names_in_this_arch, feature_grads_in_this_arch,
+                child.arch, child.unpruned_arch = guided_mutate_arch201(arch.arch, feature_names_in_this_arch,
+                                                                        feature_grads_in_this_arch,
                                                                         return_unpruned_arch=False,
-                                                                        change_grad_sign=True, debug_feature_names=[feature_names, feature_incidence])
+                                                                        change_grad_sign=True,
+                                                                        debug_feature_names=[feature_names,
+                                                                                             feature_incidence])
 
             if child.arch is None:
                 patience_ -= 1
@@ -1258,7 +1144,7 @@ def random_sampling(pool_size=100, benchmark='nasbench101',
         evaluation_pool.append(rand_arch)
         if return_unpruned_archs:
             unpruned_evaluation_pool.append(unpruned_rand_arch)
-        # attribute_name_list.append(nx.get_node_attributes(rand_arch, 'op_name'))
+
     if save_config:
         if return_unpruned_archs:
             return evaluation_pool, nasbench_config_list, unpruned_evaluation_pool
@@ -1280,11 +1166,9 @@ def build_graph(graph_model, graph_params, seed):
         return nx.random_graphs.barabasi_albert_graph(Nodes, M, seed)
     elif graph_model == 'WS':
         return nx.random_graphs.connected_watts_strogatz_graph(Nodes, K, P, tries=200, seed=seed)
-        # return nx.random_graphs.watts_strogatz_graph(Nodes, K, P, seed=seed)
 
 
 def random_graph_generation(graph_model='ER', pool_size=100):
-    # todo: this does not work for Nasbench201
     evaluation_pool = []
     ops_choices = ['conv1x1-bn-relu', 'conv3x3-bn-relu', 'maxpool3x3']
     n_edges_list = []
@@ -1319,60 +1203,3 @@ def random_graph_generation(graph_model='ER', pool_size=100):
             continue
 
     return evaluation_pool
-
-
-if __name__ == '__main__':
-    import pickle
-
-
-    class acquisition_func:
-        def __init__(self):
-            self.v = None
-
-        def eval(self, G, asscalar=True):
-            y = len(G.nodes) + len(G.edges)
-            return y
-
-
-    #
-    # output_path = '../data/'
-    # with open(os.path.join(output_path, 'valid_arch_samples_pruned'), 'rb') as outfile:
-    #     res = pickle.load(outfile)
-    #
-    # observed_archs_list = []
-    # observed_err_list = []
-    # n_init = 30
-    # k = 0
-    # while k < n_init:
-    #     model = res['model_graph_specs'][k]
-    #     A = model['adjacency']
-    #     nl = model['node_labels']
-    #     val_err = res['validation_err'][k]
-    #     G = nx.from_numpy_array(A, create_using=nx.DiGraph)
-    #     for i, n in enumerate(nl):
-    #         G.node[i]['op_name'] = n
-    #
-    #     observed_archs_list.append(G)
-    #     observed_err_list.append(val_err)
-    #
-    #     k += 1
-
-    # Generate new archs using random sampling
-    observed_archs_list, _, _ = random_sampling(pool_size=500, benchmark='nasbench201', edge_attr=True)
-    print('hold')
-    # Or using regularised evolution
-    # af = acquisition_func()
-    # best_n_arhcs = regularized_evolution(af, observed_archs_list, benchmark='nasbench201', pool_size=100, cycles=5,
-    #                                      n_mutation=10, batch_size=1)
-    # Or using random graph model
-    # pool3 = random_graph_generation(graph_model='ER', pool_size=100)
-
-    # x_testset = generate_new_test_locations()
-    # acq_values = acqquisition_func(x_testset)
-    # idx = argmax(acq_values)
-    # x_next = x_testset[idx]
-
-    #  y  = f(x1,x2) -->  now
-    #  y1 = f1(x1,x2,x)   ER
-    #  y2 = f2(x1,x2,k)   BA
-    #  y3 = f3(x1,x2,k,x) WS

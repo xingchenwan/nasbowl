@@ -1,8 +1,6 @@
-# Xingchen Wan <xwan@robots.ox.ac.uk> 2020
 
 from grakel_replace import WeisfeilerLehman as _WL
 from grakel_replace import VertexHistogram, EdgeHistogram
-# The Vertex Histogram file was modified to include option of using OA kernel.
 from grakel.utils import graph_from_networkx
 from kernels.vectorial_kernels import Stationary
 from .graph_kernel import GraphKernels

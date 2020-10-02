@@ -69,7 +69,6 @@ class CombineKernel:
             else torch.ones(len(gr), self._gram.shape[0])
         for k in self.kernels:
             if isinstance(k, GraphKernels):
-                # print(k.transform(gr1).shape)
                 if self.combined_by == 'sum':
                     K += weights[i] * k.transform(gr)
                 else:

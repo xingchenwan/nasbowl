@@ -1,13 +1,13 @@
-import networkx as nx
-import logging
+from copy import deepcopy
+
+import gpytorch
+
 from kernels import GraphKernels, Stationary
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from kernels import SumKernel
 from kernels import WeisfilerLehman
 from .graph_features import FeatureExtractor
 from .utils import *
-from copy import deepcopy
-import gpytorch
 
 
 # A vanilla GP with RBF kernel
@@ -336,7 +336,6 @@ class GraphGP:
 
         list of K torch.Tensor of shape D, if averaged_over_samples flag is enabled.
         """
-        from .utils import jacobian, gradient
         if self.K_i is None or self.logDetK is None:
             raise ValueError("Inverse of Gram matrix is not instantiated. Please call the optimize function to "
                              "fit on the training data first!")

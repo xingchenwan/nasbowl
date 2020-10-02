@@ -1,9 +1,8 @@
 from abc import ABC
-import torch
-import numpy as np
+
 import networkx as nx
-import random
-import time
+import numpy as np
+import torch
 
 
 class BaseAcquisition(ABC):
@@ -65,7 +64,7 @@ class GraphExpectedImprovement(BaseAcquisition):
         try:
             mu, cov = self.gp.predict(x)
         except:
-            return -1.   # in case of error. return ei of -1
+            return -1.  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
         mu_star = self._get_incumbent()
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
@@ -80,7 +79,7 @@ class GraphExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def _get_incumbent(self,):
+    def _get_incumbent(self, ):
         """
         Get the incumbent
         """
@@ -98,7 +97,6 @@ class GraphExpectedImprovement(BaseAcquisition):
         # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
         # print(eis)
         self.iters += 1
-        # best_idx = self.candidate_idx[int(torch.max(eis, 0)[1])]
         if return_distinct:
             eis = np.array([self.eval(c) for c in candidates])
             eis_, unique_idx = np.unique(eis, return_index=True)
@@ -122,10 +120,11 @@ class GraphUpperConfidentBound(GraphExpectedImprovement):
     """
     Graph version of the upper confidence bound acquisition function
     """
-    def __init__(self, surrogate_model,  beta=None):
+
+    def __init__(self, surrogate_model, beta=None):
         """Same as graphEI with the difference that a beta coefficient is asked for, as per standard GP-UCB acquisition
         """
-        super(GraphUpperConfidentBound, self).__init__(surrogate_model,)
+        super(GraphUpperConfidentBound, self).__init__(surrogate_model, )
         self.beta = beta
 
     def eval(self, x: nx.Graph, asscalar=False):

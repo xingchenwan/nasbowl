@@ -1,21 +1,22 @@
-from darts.cnn.genotypes import Genotype
-from darts.darts_config import *
-import torch
-from darts.cnn.model import NetworkCIFAR, NetworkImageNet
-import torch.nn as nn
-# import darts.cnn.utils as darts_utils
-from darts.cnn.utils import count_parameters_in_MB, save, AvgrageMeter, accuracy, Cutout
-from torch.autograd import Variable
 import logging
-import torchvision.datasets as dset
+import os
+import time
+
 import numpy as np
 import pandas as pd
 import tabulate
-from misc.random_string import random_generator
-import os
-import pickle
-import time
+import torch
+import torch.nn as nn
+import torchvision.datasets as dset
 import torchvision.transforms as transforms
+from torch.autograd import Variable
+
+from darts.cnn.genotypes import Genotype
+from darts.cnn.model import NetworkCIFAR
+# import darts.cnn.utils as darts_utils
+from darts.cnn.utils import count_parameters_in_MB, save, AvgrageMeter, accuracy, Cutout
+from darts.darts_config import *
+from misc.random_string import random_generator
 
 
 class DARTSTrainer:
@@ -64,7 +65,6 @@ class DARTSTrainer:
             self.train_data = dset.CIFAR100(root=self.data_path, train=True, download=True, transform=train_transform)
         else:
             raise NotImplementedError("Not implemented yet!")
-            # todo
         self.dataset = dataset
 
         # Initialise the val/train acc/loss
@@ -152,7 +152,7 @@ class DARTSTrainer:
 
 class DARTSEvaluater(DARTSTrainer):
 
-    def __init__(self,  data_path: str,
+    def __init__(self, data_path: str,
                  model_save_path: str,
                  genotype: Genotype,
                  dataset: str = 'cifar10',
@@ -163,7 +163,7 @@ class DARTSEvaluater(DARTSTrainer):
                  cutout: bool = False,
                  save_interval: int = 10,
                  auxiliary_tower: bool = False,
-                 hash_string: str = None,):
+                 hash_string: str = None, ):
         """Evaluate a DARTS-style architecture on benchmark"""
         super(DARTSEvaluater, self).__init__(data_path, model_save_path, genotype, dataset, report_freq, eval_policy,
                                              gpu_id, epochs, cutout, 0.5, save_interval, auxiliary_tower, hash_string)
@@ -181,7 +181,6 @@ class DARTSEvaluater(DARTSTrainer):
             self.val_data = dset.CIFAR100(root=self.data_path, train=False, download=True, transform=valid_transform)
         else:
             raise NotImplementedError
-            #todo
 
     def train(self):
         """Actually train the model"""

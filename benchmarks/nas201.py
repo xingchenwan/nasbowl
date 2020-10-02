@@ -211,7 +211,7 @@ class NAS201(ObjectiveFunction):
         return cs
 
 
-class NAS201edge(NAS201):  # TODO
+class NAS201edge(NAS201):
 
     def _retrieve(self, G, budget, which='eval'):
         #  set random seed for evaluation
