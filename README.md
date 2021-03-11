@@ -1,6 +1,20 @@
 # Interpretable Neural Architecture Search using Bayesian Optimisation with Weisfeiler-Lehman Kernel (NAS-BOWL)
 
-This is the code Repository for our proposed method NAS-BOWL.
+This is the code Repository for our proposed method NAS-BOWL that accompanys our paper [Interpretable Neural Architecture Search via Bayesian Optimisation with Weisfeiler-Lehman Kernels](https://openreview.net/pdf?id=j9Rv7qdXjd) at ICLR 2021.
+
+If you find our work to be useful to your research, please cite us: 
+
+```
+@inproceedings{
+ru2021interpretable,
+title={Interpretable Neural Architecture Search via Bayesian Optimisation with Weisfeiler-Lehman Kernels},
+author={Binxin Ru and Xingchen Wan and Xiaowen Dong and Michael Osborne},
+booktitle={International Conference on Learning Representations},
+year={2021},
+url={https://openreview.net/forum?id=j9Rv7qdXjd}
+}
+```
+
 
 ##  Prerequisites and Dependencies
 This code repository contains the submission of NAS-BOWL. To run the codes, please see the prerequisites below:
