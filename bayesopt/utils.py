@@ -111,7 +111,7 @@ def compute_log_marginal_likelihood(K_i, logDetK, y, normalize=True,
     prior: A pytorch distribution object. If specified, the hyperparameter prior will be taken into consideration and
     we use Type-II MAP instead of Type-II MLE (compute log_posterior instead of log_evidence)
     """
-    lml = -0.5 * y.t() @ K_i @ y + 0.5 * logDetK - y.shape[0] / 2. * torch.log(2 * torch.tensor(np.pi, ))
+    lml = -0.5 * y.t() @ K_i @ y - 0.5 * logDetK - y.shape[0] / 2. * torch.log(2 * torch.tensor(np.pi, ))
     if log_prior_dist is not None:
         lml -= log_prior_dist
     return lml / y.shape[0] if normalize else lml
